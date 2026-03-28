@@ -25,9 +25,9 @@ export class GameEngine {
     this.camX = 0;
     this.camY = 0;
 
-    // Player position (world px) — Evergreen Hollow spawn (new layout: col 125, row 420)
-    this.px = 125 * TILE_SIZE;
-    this.py = 420 * TILE_SIZE;
+    // Player position (world px) — Evergreen Hollow spawn (organic layout: col 185, row 390)
+    this.px = 185 * TILE_SIZE;
+    this.py = 390 * TILE_SIZE;
 
     // Click-to-move
     this.destination = null;
@@ -295,8 +295,8 @@ export class GameEngine {
     // Player death check
     if (gs.hp <= 0) {
       gs.hp = gs.maxHp * 0.3;
-      this.px = 125 * TILE_SIZE;
-      this.py = 420 * TILE_SIZE;
+      this.px = 185 * TILE_SIZE;
+      this.py = 390 * TILE_SIZE;
       this.destination = null;
       this.damageNumbers.push({ x: this.px, y: this.py - 40, text: 'DEFEATED! Respawning...', color: '#ff4444', life: 3.0, big: true });
     }

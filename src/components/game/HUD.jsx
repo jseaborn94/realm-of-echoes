@@ -1,5 +1,6 @@
 import React from 'react';
-import { getLevelTierColor, xpForLevel, WORLD_WIDTH, WORLD_HEIGHT } from '../../game/constants.js';
+import { getLevelTierColor, xpForLevel } from '../../game/constants.js';
+import MiniMap from './MiniMap.jsx';
 
 function StatBar({ value, max, className, style }) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
@@ -209,30 +210,8 @@ export default function HUD({ gameState, onOpenInventory, onOpenSkills }) {
         </button>
       </div>
 
-      {/* Mini-map placeholder (top right) */}
-      <div className="fixed top-3 right-3 z-40 panel-glass rounded-lg p-2">
-        <div className="text-xs font-cinzel mb-1 text-center" style={{ color: '#5a4a2a' }}>MAP</div>
-        <div className="relative w-24 h-24 rounded overflow-hidden"
-          style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.08)' }}>
-          {/* Zone bands — top=Frost, then Ironvale, Shadowfall, Wildwood, Plains=bottom */}
-          <div className="absolute left-0 right-0 opacity-70" style={{ background: '#9ecce8', top: '0%', height: '24%' }} />
-          <div className="absolute left-0 right-0 opacity-70" style={{ background: '#7a6a18', top: '24%', height: '24%' }} />
-          <div className="absolute opacity-70" style={{ background: '#3a0a5a', left: '26%', right: '24%', top: '30%', height: '24%' }} />
-          <div className="absolute left-0 right-0 opacity-60" style={{ background: '#1a3a12', top: '40%', height: '24%' }} />
-          <div className="absolute left-0 right-0 opacity-70" style={{ background: '#2d5a1b', top: '60%', height: '40%' }} />
-          {/* Player dot — live position */}
-          <div className="absolute w-2 h-2 rounded-full z-10 -translate-x-1 -translate-y-1"
-            style={{
-              background: tier.color,
-              boxShadow: `0 0 4px ${tier.color}`,
-              left: `${((gameState.playerWorldX || 0) / WORLD_WIDTH * 100).toFixed(1)}%`,
-              top:  `${((gameState.playerWorldY || 0) / WORLD_HEIGHT * 100).toFixed(1)}%`,
-            }} />
-        </div>
-        <div className="text-center mt-1 font-cinzel" style={{ fontSize: '8px', color: '#4a3a2a' }}>
-          {gameState.currentZone?.name || 'Starter Plains'}
-        </div>
-      </div>
+      {/* Mini-map — organic zones canvas */}
+      <MiniMap gameState={gameState} tier={tier} />
     </>
   );
 }

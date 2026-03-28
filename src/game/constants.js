@@ -29,18 +29,17 @@ export function xpForLevel(level) {
   return Math.floor(100 * Math.pow(1.35, level - 1));
 }
 
-// Zones mapped to the 500×500 world
+// Zones mapped to the 500×500 world — ORGANIC BLOB REGIONS
 //
-// NEW LAYOUT — clean square zones + rectangular top strip:
+// Zone centers (col, row) and their influence:
+//   Zone 1 — Starter Plains:    center ~(200, 380) — south-central, large safe blob
+//   Zone 2 — Wildwood Frontier: center ~(370, 310) — southeast, dense forest
+//   Zone 3 — Ironvale Expanse:  center ~(80,  220) — southwest, rocky arid
+//   Zone 4 — Frostthorn Reach:  center ~(340, 140) — northeast, frozen
+//   Zone 5 — Shadowfall Wastes: center ~(220,  60) — north-central, dangerous
 //
-//   col 0–499, row 0–499 (row 0 = north, row 499 = south)
-//
-//   Zone 5 — Shadowfall Wastes (LATE GAME): rows 0–99, cols 0–499   (full-width top strip)
-//   Zone 4 — Frostthorn Reach:              rows 100–299, cols 250–499 (right square)
-//   Zone 3 — Ironvale Expanse:              rows 100–299, cols 0–249   (left square)
-//   Zone 2 — Wildwood Frontier:             rows 300–449, cols 250–499 (right square)
-//   Zone 1 — Starter Plains:               rows 300–449, cols 0–249   (left square, SPAWN)
-//   (rows 450–499 are a southern fringe — treated as Zone 1)
+// Each zone is a soft voronoi region with seeded noise blobs applied to borders.
+// The result is organic territory shapes, not bands.
 //
 export const ZONES = [
   { id: 1, name: 'Starter Plains',    color: 'rgba(60,180,60,0.18)',  fogColor: 'rgba(20,40,20,0.92)'  },
@@ -50,16 +49,58 @@ export const ZONES = [
   { id: 5, name: 'Shadowfall Wastes', color: 'rgba(60,20,80,0.28)',   fogColor: 'rgba(10,5,20,0.95)'   },
 ];
 
-export function getZoneAt(col, row) {
-  // Zone 5 — top strip (late game, full width)
-  if (row < 100) return ZONES[4];
-  // Middle band (rows 100–299) — split left/right
-  if (row < 300) {
-    return col < 250 ? ZONES[2] : ZONES[3]; // Zone 3 left, Zone 4 right
-  }
-  // Lower band (rows 300–499) — split left/right
-  return col < 250 ? ZONES[0] : ZONES[1];  // Zone 1 left (spawn), Zone 2 right
+// Zone seed points — these define the "heart" of each zone
+// Format: [col, row, xStretch, yStretch, blobSeed]
+const ZONE_SEEDS = [
+  // Zone 1 — Starter Plains: wide southern area, slightly west-central
+  { id: 1, cx: 185, cy: 385, rx: 190, ry: 150, blobs: [[185,385,90],[120,430,70],[240,350,75],[170,450,60],[220,410,55]] },
+  // Zone 2 — Wildwood Frontier: southeast, organic spreading east/up
+  { id: 2, cx: 380, cy: 320, rx: 160, ry: 170, blobs: [[380,320,85],[440,380,70],[350,260,65],[430,260,60],[460,340,55],[390,420,50]] },
+  // Zone 3 — Ironvale Expanse: west side, spreading north and south
+  { id: 3, cx: 80,  cy: 220, rx: 130, ry: 180, blobs: [[80,220,80],[50,160,65],[120,280,60],[40,260,55],[110,150,58],[70,300,50]] },
+  // Zone 4 — Frostthorn Reach: northeast, large frozen territory
+  { id: 4, cx: 340, cy: 150, rx: 175, ry: 160, blobs: [[340,150,90],[400,200,70],[280,180,65],[420,120,60],[300,230,55],[460,170,50]] },
+  // Zone 5 — Shadowfall Wastes: north-central dangerous core
+  { id: 5, cx: 210, cy: 65,  rx: 210, ry: 100, blobs: [[210,65,100],[130,80,70],[300,60,75],[180,40,60],[240,90,55],[90,50,50],[360,80,55]] },
+];
+
+// Seeded noise for organic borders — deterministic
+function _noise(x, y, seed) {
+  const s = Math.sin(x * 0.11 + y * 0.07 + seed) * 43758.5453;
+  return s - Math.floor(s);
 }
+
+// Compute soft "influence" of a zone at (col, row) using blobs
+function _zoneInfluence(seed, col, row) {
+  let total = 0;
+  for (const [bx, by, br] of seed.blobs) {
+    const dx = (col - bx) / (br * 1.0);
+    const dy = (row - by) / (br * 0.85);
+    const r2 = dx * dx + dy * dy;
+    if (r2 < 4) {
+      // Gaussian falloff with noise on the border
+      const noiseOffset = _noise(col, row, seed.id * 17.3) * 0.45;
+      total += Math.max(0, 1 - r2 * 0.25 + noiseOffset * (1 - r2 * 0.25));
+    }
+  }
+  return total;
+}
+
+export function getZoneAt(col, row) {
+  let bestZone = ZONES[0];
+  let bestScore = -1;
+  for (const seed of ZONE_SEEDS) {
+    const score = _zoneInfluence(seed, col, row);
+    if (score > bestScore) {
+      bestScore = score;
+      bestZone = ZONES[seed.id - 1];
+    }
+  }
+  return bestZone;
+}
+
+// Export zone seeds for minimap rendering
+export { ZONE_SEEDS };
 
 // Class definitions
 export const CLASSES = {

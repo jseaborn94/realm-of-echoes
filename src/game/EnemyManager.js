@@ -1,4 +1,4 @@
-import { TILE_SIZE, WORLD_COLS, WORLD_ROWS } from './constants.js';
+import { TILE_SIZE, WORLD_COLS, WORLD_ROWS, getZoneAt } from './constants.js';
 import { TILE } from './WorldGenerator.js';
 
 // ─── Enemy Definitions ───────────────────────────────────────────────────────
@@ -78,21 +78,23 @@ export class EnemyManager {
     this._initialSpawn();
   }
 
-  _initialSpawn() {
-    // Zone boundaries [colMin, colMax, rowMin, rowMax] — new square zone layout
-    const ZONE_BOUNDS = {
-      1: [  0, 249, 300, 499],  // Starter Plains     — SW quadrant
-      2: [250, 499, 300, 499],  // Wildwood Frontier  — SE quadrant
-      3: [  0, 249, 100, 299],  // Ironvale Expanse   — NW quadrant
-      4: [250, 499, 100, 299],  // Frostthorn Reach   — NE quadrant
-      5: [  0, 499,   0,  99],  // Shadowfall Wastes  — top strip
-    };
+  // Organic zone bounding boxes (loose search regions — getZoneAt validates actual zone)
+  _getZoneSearchBounds(zoneId) {
+    switch (zoneId) {
+      case 1: return [  0, 280, 290, 499]; // Starter Plains — south-central
+      case 2: return [260, 499, 240, 499]; // Wildwood Frontier — southeast
+      case 3: return [  0, 210, 100, 340]; // Ironvale Expanse — west
+      case 4: return [240, 499,  80, 290]; // Frostthorn Reach — northeast
+      case 5: return [  0, 499,   0, 115]; // Shadowfall Wastes — north
+      default: return [0, 499, 0, 499];
+    }
+  }
 
-    // Many more enemies spread across the large world
+  _initialSpawn() {
     const ZONE_COUNT = { 1: 55, 2: 55, 3: 45, 4: 45, 5: 30 };
 
     for (const [zoneId, types] of Object.entries(ZONE_ENEMIES)) {
-      const bounds = ZONE_BOUNDS[zoneId];
+      const bounds = this._getZoneSearchBounds(parseInt(zoneId));
       const count  = ZONE_COUNT[zoneId];
       for (let i = 0; i < count; i++) {
         const type = types[Math.floor(Math.random() * types.length)];
@@ -105,14 +107,16 @@ export class EnemyManager {
     const def = ENEMY_TYPES[type];
     if (!def) return;
 
-    // Try to find a valid spawn position
+    // Try to find a valid spawn position that actually belongs to the zone
     let attempts = 0;
     let col, row;
     do {
       col = bounds[0] + Math.floor(Math.random() * (bounds[1] - bounds[0]));
       row = bounds[2] + Math.floor(Math.random() * (bounds[3] - bounds[2]));
       attempts++;
-    } while (attempts < 20 && this._isBadSpawn(col, row));
+      // Validate it's actually in the right organic zone
+      if (attempts < 30 && getZoneAt(col, row).id !== zoneId) continue;
+    } while (attempts < 40 && this._isBadSpawn(col, row));
 
     if (attempts >= 20) return;
 
@@ -155,8 +159,8 @@ export class EnemyManager {
     if (col < 1 || col >= WORLD_COLS - 1 || row < 1 || row >= WORLD_ROWS - 1) return true;
     if (this.world.getTile(col, row) === TILE.WATER) return true;
     if (this.world.isBlocked(col, row)) return true;
-    // Don't spawn near player start (Evergreen Hollow col 125, row 420)
-    if (Math.abs(col - 125) < 14 && Math.abs(row - 420) < 14) return true;
+    // Don't spawn near player start (Evergreen Hollow col 185, row 390)
+    if (Math.abs(col - 185) < 14 && Math.abs(row - 390) < 14) return true;
     return false;
   }
 
