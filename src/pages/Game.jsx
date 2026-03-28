@@ -8,6 +8,7 @@ import SkillsPanel from '@/components/game/SkillsPanel.jsx';
 import DialoguePanel from '@/components/game/DialoguePanel.jsx';
 import LootNotification from '@/components/game/LootNotification.jsx';
 import CraftingPanel from '@/components/game/CraftingPanel.jsx';
+import WorldMap from '@/components/game/WorldMap.jsx';
 import { getNPCRole, consumeInputs as craftConsume } from '@/game/CraftingRecipes.js';
 import { addResourcesToInventory } from '@/game/GatheringSystem.js';
 
@@ -55,6 +56,7 @@ export default function Game() {
 
   const [showInventory, setShowInventory] = useState(false);
   const [showSkills, setShowSkills] = useState(false);
+  const [showWorldMap, setShowWorldMap] = useState(false);
   const [lootItem, setLootItem] = useState(null);
   const [craftingNPC, setCraftingNPC] = useState(null);
 
@@ -116,6 +118,7 @@ export default function Game() {
       if (e.key === 'Escape') {
         setShowInventory(false);
         setShowSkills(false);
+        setShowWorldMap(false);
         setCraftingNPC(null);
         if (gameState?.dialogueNPC) {
           setGameState(prev => ({ ...prev, dialogueNPC: null }));
@@ -123,6 +126,7 @@ export default function Game() {
       }
       if (e.key === 'i' || e.key === 'I') setShowInventory(v => !v);
       if (e.key === 'k' || e.key === 'K') setShowSkills(v => !v);
+      if (e.key === 'm' || e.key === 'M') setShowWorldMap(v => !v);
 
       // Dialogue / crafting advance with F
       if (e.key === 'f' || e.key === 'F') {
@@ -322,13 +326,18 @@ export default function Game() {
       {/* Loot notification */}
       <LootNotification item={lootItem} onClose={() => setLootItem(null)} />
 
+      {/* World Map */}
+      {showWorldMap && gameState && (
+        <WorldMap gameState={gameState} onClose={() => setShowWorldMap(false)} />
+      )}
+
       {/* Controls hint */}
       <div className="fixed bottom-20 left-3 z-30 text-xs font-cinzel space-y-0.5"
         style={{ color: '#2a1a0a' }}>
         <div>Click — Move</div>
         <div>QWER — Abilities</div>
         <div>F — Interact</div>
-        <div>I — Inventory · K — Skills</div>
+        <div>I — Inventory · K — Skills · M — Map</div>
       </div>
     </div>
   );

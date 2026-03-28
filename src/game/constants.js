@@ -6,7 +6,7 @@ export const WORLD_WIDTH = WORLD_COLS * TILE_SIZE;
 export const WORLD_HEIGHT = WORLD_ROWS * TILE_SIZE;
 
 export const PLAYER_SPEED = 180; // px/sec
-export const FOG_RADIUS = 220;
+export const FOG_RADIUS = 140; // Zoomed in view for more immersion
 
 // Level tier colors
 export const LEVEL_TIER_COLORS = {

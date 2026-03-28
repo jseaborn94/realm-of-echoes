@@ -509,11 +509,6 @@ export class GameEngine {
 
         ctx.fillStyle = config.fill;
         ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
-
-        // Subtle grid
-        ctx.strokeStyle = config.stroke;
-        ctx.lineWidth = 0.3;
-        ctx.strokeRect(sx + 0.5, sy + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
       }
     }
   }
