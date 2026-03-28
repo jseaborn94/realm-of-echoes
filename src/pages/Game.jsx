@@ -34,7 +34,7 @@ const initialGameState = (classId, playerName) => {
       return acc;
     }, {}),
     skillPoints: 1,
-    skillLevels: { Q: 0, W: 0, E: 0 },
+    skillLevels: { Q: 0, W: 0, E: 0, R: 0 },
     cooldowns: { Q: 0, W: 0, E: 0, R: 0 },
     currentZone: null,
     nearNPC: null,

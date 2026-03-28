@@ -17,42 +17,60 @@ const TYPE_ICONS = {
 
 function SkillRow({ keyLabel, ability, skillLevel, skillPoints, onUpgrade, classColor }) {
   const maxLevel = 5;
+  const isLocked = skillLevel === 0;
   const canUpgrade = skillPoints > 0 && skillLevel < maxLevel;
+  const borderColor = isLocked ? 'rgba(255,255,255,0.06)' : `${classColor}33`;
+  const bgColor = isLocked ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.3)';
 
   return (
-    <div className="p-3 rounded-lg mb-2" style={{ background: 'rgba(0,0,0,0.3)', border: `1px solid ${classColor}22` }}>
+    <div className="p-3 rounded-lg mb-2 transition-all" style={{ background: bgColor, border: `1px solid ${borderColor}` }}>
       <div className="flex items-start gap-3">
         {/* Key badge */}
-        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 font-cinzel font-black text-lg"
-          style={{ background: `${classColor}22`, border: `2px solid ${classColor}`, color: classColor }}>
+        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 font-cinzel font-black text-lg relative"
+          style={{
+            background: isLocked ? 'rgba(0,0,0,0.5)' : `${classColor}22`,
+            border: `2px solid ${isLocked ? 'rgba(255,255,255,0.1)' : classColor}`,
+            color: isLocked ? '#3a2a1a' : classColor,
+          }}>
           {keyLabel}
+          {isLocked && <div className="absolute inset-0 flex items-center justify-center text-sm rounded-lg" style={{ background: 'rgba(0,0,0,0.5)' }}>🔒</div>}
         </div>
 
         {/* Info */}
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span style={{ fontSize: '16px' }}>{TYPE_ICONS[ability.type]}</span>
-            <span className="font-cinzel font-bold text-sm" style={{ color: classColor }}>{ability.name}</span>
-            <span className="text-xs px-1.5 py-0.5 rounded font-cinzel capitalize"
-              style={{ background: TYPE_COLORS[ability.type] + '22', color: TYPE_COLORS[ability.type], fontSize: '9px' }}>
-              {ability.type}
-            </span>
+            <span style={{ fontSize: '16px', opacity: isLocked ? 0.3 : 1 }}>{TYPE_ICONS[ability.type]}</span>
+            <span className="font-cinzel font-bold text-sm" style={{ color: isLocked ? '#3a2a1a' : classColor }}>{ability.name}</span>
+            {!isLocked && (
+              <span className="text-xs px-1.5 py-0.5 rounded font-cinzel capitalize"
+                style={{ background: TYPE_COLORS[ability.type] + '22', color: TYPE_COLORS[ability.type], fontSize: '9px' }}>
+                {ability.type}
+              </span>
+            )}
+            {isLocked && (
+              <span className="text-xs px-1.5 py-0.5 rounded font-cinzel"
+                style={{ background: 'rgba(255,255,255,0.05)', color: '#3a2a1a', fontSize: '9px' }}>
+                LOCKED
+              </span>
+            )}
           </div>
 
-          <p className="text-xs mb-2" style={{ color: '#6a5a3a', fontFamily: 'Crimson Text, serif', lineHeight: 1.5 }}>
-            {ability.description}
+          <p className="text-xs mb-2" style={{ color: isLocked ? '#2a1a0a' : '#6a5a3a', fontFamily: 'Crimson Text, serif', lineHeight: 1.5 }}>
+            {isLocked ? 'Invest 1 skill point to unlock this ability.' : ability.description}
           </p>
 
-          <div className="flex items-center gap-1 text-xs" style={{ color: '#5a4a2a' }}>
-            <span className="font-cinzel">MP:</span>
-            <span style={{ color: '#4a9eff' }}>{ability.mpCost}</span>
-          </div>
+          {!isLocked && (
+            <div className="flex items-center gap-1 text-xs" style={{ color: '#5a4a2a' }}>
+              <span className="font-cinzel">MP:</span>
+              <span style={{ color: '#4a9eff' }}>{ability.mpCost}</span>
+            </div>
+          )}
         </div>
 
         {/* Level control */}
         <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
-          <div className="font-cinzel text-xs" style={{ color: '#5a4a2a' }}>
-            Level <span style={{ color: classColor }}>{skillLevel}</span>/{maxLevel}
+          <div className="font-cinzel text-xs" style={{ color: isLocked ? '#2a1a0a' : '#5a4a2a' }}>
+            Level <span style={{ color: isLocked ? '#3a2a1a' : classColor }}>{skillLevel}</span>/{maxLevel}
           </div>
 
           {/* Level dots */}
@@ -61,20 +79,21 @@ function SkillRow({ keyLabel, ability, skillLevel, skillPoints, onUpgrade, class
               <div key={i} className="w-3 h-3 rounded-full border transition-all"
                 style={{
                   background: i < skillLevel ? classColor : 'transparent',
-                  borderColor: i < skillLevel ? classColor : 'rgba(255,255,255,0.15)',
+                  borderColor: i < skillLevel ? classColor : 'rgba(255,255,255,0.08)',
                   boxShadow: i < skillLevel ? `0 0 4px ${classColor}` : 'none',
                 }} />
             ))}
           </div>
 
-          {/* Power multiplier */}
-          <div className="text-center">
-            <div className="font-cinzel text-xs" style={{ color: '#4caf50', fontSize: '10px' }}>
-              +{Math.round(skillLevel * 30)}% power
+          {!isLocked && (
+            <div className="text-center">
+              <div className="font-cinzel text-xs" style={{ color: '#4caf50', fontSize: '10px' }}>
+                +{Math.round(skillLevel * 30)}% power
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Upgrade button */}
+          {/* Upgrade / Unlock button */}
           <button
             onClick={() => canUpgrade && onUpgrade(keyLabel)}
             disabled={!canUpgrade}
@@ -87,7 +106,7 @@ function SkillRow({ keyLabel, ability, skillLevel, skillPoints, onUpgrade, class
               fontWeight: 'bold',
             }}
           >
-            {skillLevel >= maxLevel ? 'MAX' : '↑ Upgrade'}
+            {skillLevel >= maxLevel ? 'MAX' : isLocked ? '🔓 Unlock' : '↑ Upgrade'}
           </button>
         </div>
       </div>
@@ -198,7 +217,7 @@ export default function SkillsPanel({ gameState, onClose, onUpgradeSkill }) {
           <div className="mb-4 p-2.5 rounded-lg" style={{ background: 'rgba(255,232,138,0.06)', border: '1px solid rgba(255,232,138,0.12)' }}>
             <p className="text-xs font-cinzel" style={{ color: '#8a7a5a' }}>
               Available Skill Points: <span style={{ color: '#ffe88a' }}>{skillPoints}</span>
-              <span className="ml-2 opacity-60">· Gain +1 per level · Q/W/E max Lv.5 · R unlocks at Lv.6</span>
+              <span className="ml-2 opacity-60">· Skills must be unlocked before use · +1 pt per level · Q/W/E cap at Lv.5 · R unlocks at Lv.6</span>
             </p>
           </div>
 

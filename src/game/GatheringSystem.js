@@ -58,12 +58,17 @@ export class GatheringSystem {
       }
     }
 
-    // Sheep — scatter near towns in starter zone
+    // Sheep — scatter near towns in starter zone (new layout: Zone 1 = cols 0–249, rows 300–499, spawn ~125,420)
     const sheepSpawns = [
-      [260, 455], [270, 460], [240, 462], [255, 468],
-      [280, 445], [230, 442], [295, 455], [220, 460],
-      [110, 420], [120, 425], [390, 420], [400, 425],
-      [265, 350], [245, 355], [275, 360],
+      // Near Evergreen Hollow (spawn)
+      [140, 430], [150, 440], [110, 445], [135, 455],
+      [160, 415], [100, 430], [170, 450], [ 90, 415],
+      // Southern Outpost area
+      [ 70, 470], [ 80, 480], [ 40, 460], [ 60, 455],
+      // Scattered in Zone 1
+      [200, 350], [210, 360], [180, 340], [230, 380],
+      // Zone 2 — Wildwood also has some sheep near Thornmere
+      [360, 440], [380, 450], [340, 430], [400, 460],
     ];
     for (const [col, row] of sheepSpawns) {
       if (col >= 0 && col < WORLD_COLS && row >= 0 && row < WORLD_ROWS) {

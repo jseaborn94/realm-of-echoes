@@ -17,26 +17,32 @@ function StatBar({ value, max, className, style }) {
 function AbilitySlot({ keyLabel, ability, cooldown, maxCooldown, level, classColor, onClick }) {
   const pct = maxCooldown > 0 ? cooldown / maxCooldown : 0;
   const isOnCD = cooldown > 0;
+  const isLocked = level === 0; // 0/5 = locked, unusable
 
   return (
-    <div className="flex flex-col items-center gap-0.5" onClick={onClick} style={{ cursor: 'pointer' }}>
+    <div className="flex flex-col items-center gap-0.5" onClick={onClick} style={{ cursor: isLocked ? 'default' : 'pointer' }}>
       <div className="relative w-12 h-12 rounded-lg overflow-hidden"
         style={{
-          background: isOnCD ? 'rgba(0,0,0,0.7)' : `${classColor}22`,
-          border: `2px solid ${isOnCD ? 'rgba(255,255,255,0.15)' : classColor}`,
-          boxShadow: isOnCD ? 'none' : `0 0 8px ${classColor}44`,
+          background: isLocked ? 'rgba(0,0,0,0.6)' : isOnCD ? 'rgba(0,0,0,0.7)' : `${classColor}22`,
+          border: `2px solid ${isLocked ? 'rgba(255,255,255,0.08)' : isOnCD ? 'rgba(255,255,255,0.15)' : classColor}`,
+          boxShadow: isLocked || isOnCD ? 'none' : `0 0 8px ${classColor}44`,
+          opacity: isLocked ? 0.5 : 1,
         }}>
-        {/* Ability icon area */}
+        {/* Ability icon or lock icon */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <span style={{ fontSize: '20px' }}>
-            {ability?.type === 'single' ? '⚡' :
-             ability?.type === 'utility' ? '🛡️' :
-             ability?.type === 'aoe' ? '💥' : '🔥'}
-          </span>
+          {isLocked ? (
+            <span style={{ fontSize: '18px' }}>🔒</span>
+          ) : (
+            <span style={{ fontSize: '20px' }}>
+              {ability?.type === 'single' ? '⚡' :
+               ability?.type === 'utility' ? '🛡️' :
+               ability?.type === 'aoe' ? '💥' : '🔥'}
+            </span>
+          )}
         </div>
 
         {/* Cooldown overlay */}
-        {isOnCD && (
+        {!isLocked && isOnCD && (
           <div className="absolute inset-0 flex items-end justify-center pb-1"
             style={{ background: `rgba(0,0,0,${pct * 0.7})` }}>
             <div className="absolute bottom-0 left-0 right-0"
@@ -48,16 +54,18 @@ function AbilitySlot({ keyLabel, ability, cooldown, maxCooldown, level, classCol
         )}
 
         {/* Skill level dots */}
-        <div className="absolute top-0.5 right-0.5 flex gap-0.5">
-          {Array.from({ length: Math.min(level, 5) }).map((_, i) => (
-            <div key={i} className="w-1 h-1 rounded-full" style={{ background: classColor }} />
-          ))}
-        </div>
+        {!isLocked && (
+          <div className="absolute top-0.5 right-0.5 flex gap-0.5">
+            {Array.from({ length: Math.min(level, 5) }).map((_, i) => (
+              <div key={i} className="w-1 h-1 rounded-full" style={{ background: classColor }} />
+            ))}
+          </div>
+        )}
       </div>
 
-      <span className="font-cinzel text-xs" style={{ color: classColor, fontWeight: 'bold' }}>{keyLabel}</span>
-      <span className="text-center leading-none" style={{ color: '#6a5a3a', fontSize: '8px', maxWidth: '48px' }}>
-        {ability?.name?.split(' ').slice(0, 2).join(' ')}
+      <span className="font-cinzel text-xs" style={{ color: isLocked ? '#3a2a1a' : classColor, fontWeight: 'bold' }}>{keyLabel}</span>
+      <span className="text-center leading-none" style={{ color: isLocked ? '#2a1a0a' : '#6a5a3a', fontSize: '8px', maxWidth: '48px' }}>
+        {isLocked ? 'locked' : ability?.name?.split(' ').slice(0, 2).join(' ')}
       </span>
     </div>
   );

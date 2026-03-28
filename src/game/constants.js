@@ -30,31 +30,35 @@ export function xpForLevel(level) {
 }
 
 // Zones mapped to the 500×500 world
-// Zone layout (row = north is 0, south is 499):
-//   Zone 1 — Starter Plains:    rows 300–499 (south)
-//   Zone 2 — Wildwood Frontier: rows 200–320
-//   Zone 3 — Ironvale Expanse:  rows 100–220
-//   Zone 4 — Frostthorn Reach:  rows 0–120 (north)
-//   Zone 5 — Shadowfall Wastes: cols 130–380, rows 150–270 (central pocket)
+//
+// NEW LAYOUT — clean square zones + rectangular top strip:
+//
+//   col 0–499, row 0–499 (row 0 = north, row 499 = south)
+//
+//   Zone 5 — Shadowfall Wastes (LATE GAME): rows 0–99, cols 0–499   (full-width top strip)
+//   Zone 4 — Frostthorn Reach:              rows 100–299, cols 250–499 (right square)
+//   Zone 3 — Ironvale Expanse:              rows 100–299, cols 0–249   (left square)
+//   Zone 2 — Wildwood Frontier:             rows 300–449, cols 250–499 (right square)
+//   Zone 1 — Starter Plains:               rows 300–449, cols 0–249   (left square, SPAWN)
+//   (rows 450–499 are a southern fringe — treated as Zone 1)
+//
 export const ZONES = [
-  { id: 1, name: 'Starter Plains',    color: 'rgba(60,180,60,0.18)',  fogColor: 'rgba(20,40,20,0.92)',  cols: [0, 500], rows: [300, 500] },
-  { id: 2, name: 'Wildwood Frontier', color: 'rgba(30,100,40,0.22)',  fogColor: 'rgba(10,25,15,0.93)',  cols: [0, 500], rows: [200, 320] },
-  { id: 3, name: 'Ironvale Expanse',  color: 'rgba(160,150,60,0.18)', fogColor: 'rgba(30,25,10,0.93)',  cols: [0, 500], rows: [100, 220] },
-  { id: 4, name: 'Frostthorn Reach',  color: 'rgba(40,120,160,0.20)', fogColor: 'rgba(10,20,35,0.93)',  cols: [0, 500], rows: [0,   120] },
-  { id: 5, name: 'Shadowfall Wastes', color: 'rgba(60,20,80,0.28)',   fogColor: 'rgba(10,5,20,0.95)',   cols: [130, 380], rows: [150, 270] },
+  { id: 1, name: 'Starter Plains',    color: 'rgba(60,180,60,0.18)',  fogColor: 'rgba(20,40,20,0.92)'  },
+  { id: 2, name: 'Wildwood Frontier', color: 'rgba(30,100,40,0.22)',  fogColor: 'rgba(10,25,15,0.93)'  },
+  { id: 3, name: 'Ironvale Expanse',  color: 'rgba(160,150,60,0.18)', fogColor: 'rgba(30,25,10,0.93)'  },
+  { id: 4, name: 'Frostthorn Reach',  color: 'rgba(40,120,160,0.20)', fogColor: 'rgba(10,20,35,0.93)'  },
+  { id: 5, name: 'Shadowfall Wastes', color: 'rgba(60,20,80,0.28)',   fogColor: 'rgba(10,5,20,0.95)'   },
 ];
 
 export function getZoneAt(col, row) {
-  // Zone 5 is a central pocket — check first (highest priority)
-  if (col >= 130 && col < 380 && row >= 150 && row < 270) return ZONES[4];
-  // Zone 4 — Frostthorn (far north)
-  if (row < 120) return ZONES[3];
-  // Zone 3 — Ironvale
-  if (row < 220) return ZONES[2];
-  // Zone 2 — Wildwood
-  if (row < 320) return ZONES[1];
-  // Zone 1 — Starter Plains (default south)
-  return ZONES[0];
+  // Zone 5 — top strip (late game, full width)
+  if (row < 100) return ZONES[4];
+  // Middle band (rows 100–299) — split left/right
+  if (row < 300) {
+    return col < 250 ? ZONES[2] : ZONES[3]; // Zone 3 left, Zone 4 right
+  }
+  // Lower band (rows 300–499) — split left/right
+  return col < 250 ? ZONES[0] : ZONES[1];  // Zone 1 left (spawn), Zone 2 right
 }
 
 // Class definitions

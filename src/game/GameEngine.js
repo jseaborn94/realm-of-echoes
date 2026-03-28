@@ -25,9 +25,9 @@ export class GameEngine {
     this.camX = 0;
     this.camY = 0;
 
-    // Player position (world px) — Evergreen Hollow spawn
-    this.px = 248 * TILE_SIZE;
-    this.py = 448 * TILE_SIZE;
+    // Player position (world px) — Evergreen Hollow spawn (new layout: col 125, row 420)
+    this.px = 125 * TILE_SIZE;
+    this.py = 420 * TILE_SIZE;
 
     // Click-to-move
     this.destination = null;
@@ -74,13 +74,18 @@ export class GameEngine {
     };
 
     this._onMouseDown = (e) => {
-      // Only left click
+      // Only left click, only on the canvas itself (not UI overlays)
       if (e.button !== 0) return;
-      // Ignore clicks on UI elements (anything that's not the canvas)
       if (e.target !== this.canvas) return;
 
+      // Convert screen coords to world coords
       const worldX = e.clientX + this.camX;
       const worldY = e.clientY + this.camY;
+
+      // Don't navigate to water or out-of-bounds
+      const col = Math.floor(worldX / TILE_SIZE);
+      const row = Math.floor(worldY / TILE_SIZE);
+      if (col < 0 || col >= WORLD_COLS || row < 0 || row >= WORLD_ROWS) return;
 
       this.destination = { x: worldX, y: worldY };
       this.clickIndicator = { x: worldX, y: worldY, life: 0.6, maxLife: 0.6 };
@@ -290,8 +295,8 @@ export class GameEngine {
     // Player death check
     if (gs.hp <= 0) {
       gs.hp = gs.maxHp * 0.3;
-      this.px = 248 * TILE_SIZE;
-      this.py = 448 * TILE_SIZE;
+      this.px = 125 * TILE_SIZE;
+      this.py = 420 * TILE_SIZE;
       this.destination = null;
       this.damageNumbers.push({ x: this.px, y: this.py - 40, text: 'DEFEATED! Respawning...', color: '#ff4444', life: 3.0, big: true });
     }
@@ -319,9 +324,20 @@ export class GameEngine {
   _useSkill(key) {
     const gs = this.gameState;
     if (this.cooldowns[key] > 0) return;
+
+    // R locked until level 6
     if (key === 'R' && gs.level < 6) {
-      this.onStateUpdate({ ...gs, floatingMsg: 'Unlock R at Level 6!' });
+      this.damageNumbers.push({ x: this.px, y: this.py - 30, text: 'Unlock R at Level 6!', color: '#aaaaaa', life: 1.5 });
       return;
+    }
+
+    // Q, W, E locked until at least 1 skill point invested
+    if (key !== 'R') {
+      const skillLevel = gs.skillLevels?.[key] || 0;
+      if (skillLevel === 0) {
+        this.damageNumbers.push({ x: this.px, y: this.py - 30, text: `${key} locked — invest a skill point!`, color: '#aaaaaa', life: 1.5 });
+        return;
+      }
     }
 
     const abilities = gs.classData?.abilities || [];
