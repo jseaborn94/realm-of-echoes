@@ -4,6 +4,7 @@ import {
 } from './constants.js';
 import { WorldGenerator, TILE_COLORS, TILE, OBJ } from './WorldGenerator.js';
 import { EnemyManager } from './EnemyManager.js';
+import { GatheringSystem, addResourcesToInventory } from './GatheringSystem.js';
 
 export class GameEngine {
   constructor(canvas, gameState, onStateUpdate) {
@@ -14,6 +15,7 @@ export class GameEngine {
 
     this.world = new WorldGenerator();
     this.enemyManager = new EnemyManager(this.world);
+    this.gatheringSystem = new GatheringSystem(this.world);
     this.keys = {};
     this.running = false;
     this.lastTime = 0;
@@ -45,6 +47,8 @@ export class GameEngine {
     // NPC interaction
     this.nearNPC = null;
     this.nearChest = null;
+    this.nearNode = null;       // gathering node
+    this.isGathering = false;   // currently holding F to gather
 
     this._bindKeys();
     this._resize();
@@ -60,6 +64,10 @@ export class GameEngine {
       if (k === 'e') this._useSkill('E');
       if (k === 'r') this._useSkill('R');
       if (k === 'f') this._interact();
+      if (k === 'f' && this.nearNode && !this.nearNPC && !this.nearChest) {
+        this.gatheringSystem.startHarvest(this.nearNode.id);
+        this.isGathering = true;
+      }
     };
 
     this._onMouseDown = (e) => {
@@ -75,7 +83,14 @@ export class GameEngine {
       this.clickIndicator = { x: worldX, y: worldY, life: 0.6, maxLife: 0.6 };
     };
 
+    this._onKeyUp = (e) => {
+      if (e.key.toLowerCase() === 'f') {
+        this.isGathering = false;
+        this.gatheringSystem.cancelHarvest();
+      }
+    };
     window.addEventListener('keydown', this._onKeyDown);
+    window.addEventListener('keyup', this._onKeyUp);
     this.canvas.addEventListener('mousedown', this._onMouseDown);
   }
 
@@ -94,6 +109,7 @@ export class GameEngine {
     this.running = false;
     if (this.animFrame) cancelAnimationFrame(this.animFrame);
     window.removeEventListener('keydown', this._onKeyDown);
+    window.removeEventListener('keyup', this._onKeyUp);
     this.canvas.removeEventListener('mousedown', this._onMouseDown);
   }
 
@@ -217,6 +233,29 @@ export class GameEngine {
       if (dist <= 2) { this.nearChest = chest; break; }
     }
 
+    // Gathering node proximity
+    this.nearNode = this.gatheringSystem.getNearNode(this.px, this.py);
+    // Cancel gathering if player moves away from node
+    if (this.isGathering && !this.nearNode) {
+      this.isGathering = false;
+      this.gatheringSystem.cancelHarvest();
+    }
+
+    // Update gathering system
+    const harvested = this.gatheringSystem.update(dt);
+    if (harvested.length > 0) {
+      this.isGathering = false;
+      for (const { node, drops } of harvested) {
+        gs.inventory = addResourcesToInventory(gs.inventory || [], drops);
+        const label = drops.map(d => `${d.icon} ${d.name} x${d.qty}`).join(', ');
+        this.damageNumbers.push({
+          x: node.x, y: node.y - 20,
+          text: `+${label}`,
+          color: '#4caf50', life: 2.0, big: false,
+        });
+      }
+    }
+
     // ── Enemy AI & Combat ──
     const pushDmgNum = (x, y, text, color, big) => {
       this.damageNumbers.push({ x, y, text, color, life: 1.2, big: !!big });
@@ -254,7 +293,7 @@ export class GameEngine {
       this.damageNumbers.push({ x: this.px, y: this.py - 40, text: 'DEFEATED! Respawning...', color: '#ff4444', life: 3.0, big: true });
     }
 
-    this.onStateUpdate({ ...gs, cooldowns: { ...this.cooldowns }, nearNPC: this.nearNPC, nearChest: this.nearChest, playerWorldX: this.px, playerWorldY: this.py });
+    this.onStateUpdate({ ...gs, cooldowns: { ...this.cooldowns }, nearNPC: this.nearNPC, nearChest: this.nearChest, nearNode: this.nearNode, playerWorldX: this.px, playerWorldY: this.py });
   }
 
   _isBlocked(wx, wy) {
@@ -402,6 +441,9 @@ export class GameEngine {
     // Draw enemies
     this.enemyManager.draw(ctx, this.camX, this.camY);
 
+    // Draw gathering nodes (sheep + progress bars)
+    this.gatheringSystem.draw(ctx, this.camX, this.camY);
+
     // Draw effects
     this._drawEffects(ctx);
 
@@ -428,7 +470,7 @@ export class GameEngine {
     }
 
     // Interact prompt
-    if (this.nearNPC || this.nearChest) {
+    if (this.nearNPC || this.nearChest || this.nearNode) {
       this._drawInteractPrompt(ctx, W, H);
     }
   }
@@ -781,7 +823,13 @@ export class GameEngine {
   }
 
   _drawInteractPrompt(ctx, W, H) {
-    const label = this.nearNPC ? `[F] Talk to ${this.nearNPC.name}` : '[F] Open Chest';
+    let label;
+    if (this.nearNPC) label = `[F] Talk to ${this.nearNPC.name}`;
+    else if (this.nearChest) label = '[F] Open Chest';
+    else if (this.nearNode) {
+      const nodeLabels = { tree: '[Hold F] Chop Tree 🪵', rock: '[Hold F] Mine Rock 🪨', sheep: '[Hold F] Gather Sheep 🐑' };
+      label = nodeLabels[this.nearNode.type] || '[Hold F] Gather';
+    }
     ctx.save();
     ctx.fillStyle = 'rgba(0,0,0,0.7)';
     ctx.beginPath();

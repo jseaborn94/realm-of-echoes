@@ -78,8 +78,45 @@ function EquipSlot({ slot, item, onDrop, onUnequip, isWarrior }) {
   );
 }
 
-function InvItem({ item, onEquip }) {
+function InvItem({ item, onEquip, onUse }) {
   const [showTip, setShowTip] = useState(false);
+
+  if (item.isResource) {
+    // Resource / consumable stacked item
+    const isConsumable = !!item.useEffect;
+    return (
+      <div
+        className="relative inv-slot has-item rounded-lg flex flex-col items-center justify-center w-14 h-14 cursor-default"
+        style={{ borderColor: RARITY_COLORS[item.rarity] + '60' }}
+        onMouseEnter={() => setShowTip(true)}
+        onMouseLeave={() => setShowTip(false)}
+        onDoubleClick={() => isConsumable && onUse && onUse(item)}
+        title={isConsumable ? 'Double-click to use' : item.name}
+      >
+        <span style={{ fontSize: '20px' }}>{item.icon}</span>
+        {/* Stack count */}
+        <div className="absolute top-0.5 right-1 font-cinzel font-bold"
+          style={{ fontSize: '9px', color: '#ffe88a', textShadow: '0 1px 2px black' }}>
+          {item.qty || 1}
+        </div>
+        {/* Label */}
+        <div className="absolute bottom-0 right-0 left-0 text-center"
+          style={{ fontSize: '7px', color: RARITY_COLORS[item.rarity], background: 'rgba(0,0,0,0.6)', borderRadius: '0 0 6px 6px' }}>
+          {item.name.slice(0, 6)}
+        </div>
+        {showTip && (
+          <div className="absolute z-50 w-36 panel-glass-gold rounded-lg p-2 pointer-events-none"
+            style={{ bottom: '110%', left: '50%', transform: 'translateX(-50%)' }}>
+            <div className="font-cinzel font-bold text-xs mb-1" style={{ color: '#ffe88a' }}>{item.name}</div>
+            <div className="text-xs" style={{ color: '#5a4a2a' }}>Qty: {item.qty || 1}</div>
+            {item.useEffect?.hp && <div className="text-xs" style={{ color: '#4caf50' }}>Restores {item.useEffect.hp} HP</div>}
+            {isConsumable && <div className="text-xs mt-1" style={{ color: '#ffe88a' }}>Double-click to use</div>}
+            {!isConsumable && <div className="text-xs mt-1" style={{ color: '#5a4a2a' }}>Crafting material</div>}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -103,7 +140,7 @@ function InvItem({ item, onEquip }) {
   );
 }
 
-export default function InventoryPanel({ gameState, onClose, onEquip, onUnequip }) {
+export default function InventoryPanel({ gameState, onClose, onEquip, onUnequip, onUseItem }) {
   const { inventory = [], equipped = {}, classData } = gameState;
   const isWarrior = classData?.id === 'warrior';
 
@@ -123,8 +160,21 @@ export default function InventoryPanel({ gameState, onClose, onEquip, onUnequip 
   };
 
   // Unequipped inventory items (not currently equipped)
+  // Resources are deduplicated by id for display
   const equippedIds = new Set(Object.values(equipped).filter(Boolean).map(i => i.id));
-  const bagItems = inventory.filter(i => !equippedIds.has(i.id));
+  const rawBag = inventory.filter(i => !equippedIds.has(i.id));
+  // Merge stacked resources for display
+  const resourceMap = {};
+  const gearItems = [];
+  for (const item of rawBag) {
+    if (item.isResource) {
+      if (!resourceMap[item.id]) resourceMap[item.id] = { ...item };
+      else resourceMap[item.id].qty = (resourceMap[item.id].qty || 1) + (item.qty || 1);
+    } else {
+      gearItems.push(item);
+    }
+  }
+  const bagItems = [...gearItems, ...Object.values(resourceMap)];
 
   const leftSlots  = ['helmet', 'chest', 'pants', 'gloves', 'boots'];
   const rightSlots = ['weapon', 'shield'];
@@ -232,7 +282,7 @@ export default function InventoryPanel({ gameState, onClose, onEquip, onUnequip 
             <div className="grid grid-cols-6 gap-1.5 p-3 rounded-lg min-h-16"
               style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}>
               {bagItems.map(item => (
-                <InvItem key={item.id} item={item} onEquip={i => onEquip(i, i.slot)} />
+                <InvItem key={item.id} item={item} onEquip={i => onEquip(i, i.slot)} onUse={onUseItem} />
               ))}
               {bagItems.length === 0 && (
                 <div className="col-span-6 text-center py-4 font-cinzel text-xs" style={{ color: '#3a2a1a' }}>

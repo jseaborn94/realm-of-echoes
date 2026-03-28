@@ -347,7 +347,7 @@ export class WorldGenerator {
     this.npcs = [
       // ── Zone 1: Starter Plains ──
       { col: 248, row: 448, name: 'Elder Thaddeus',  dialogue: ["Welcome to the Realm of Echoes.", "Many adventurers set out from Evergreen Hollow — few return from the north.", "Press F to speak to any soul you find."] },
-      { col: 250, row: 446, name: 'Blacksmith Oryn', dialogue: ["I can temper any blade you bring me.", "The Ironvale holds ancient ore veins, if you dare venture that far.", "Rarer materials make better gear. Keep exploring."] },
+      { col: 250, row: 446, name: 'Blacksmith Oryn', dialogue: ["I can smelt Ore into Metal Bars, and upgrade your gear.", "Bring me 3 Ore to smelt a Metal Bar. Mine rocks in the world to gather Ore.", "Press F to open my crafting menu."] },
       { col: 246, row: 450, name: 'Scout Mira',      dialogue: ["Follow the northern road through the Wildwood.", "The Shadowfall Wastes lie in the heart of the world — avoid them until you're ready.", "I've seen creatures near the lakebed at dusk."] },
       { col: 95,  row: 413, name: 'Ranger Hollis',   dialogue: ["This western outpost guards the forest path.", "Strange tracks near the river. Something big.", "Stay on the roads at night."] },
       { col: 405, row: 413, name: 'Merchant Yeva',   dialogue: ["Goods from the east — exotic and expensive.", "The eastern pass leads through the Wildwood faster.", "I deal in rare materials if you find any."] },

@@ -7,6 +7,9 @@ import InventoryPanel from '@/components/game/InventoryPanel.jsx';
 import SkillsPanel from '@/components/game/SkillsPanel.jsx';
 import DialoguePanel from '@/components/game/DialoguePanel.jsx';
 import LootNotification from '@/components/game/LootNotification.jsx';
+import CraftingPanel from '@/components/game/CraftingPanel.jsx';
+import { getNPCRole, consumeInputs as craftConsume } from '@/game/CraftingRecipes.js';
+import { addResourcesToInventory } from '@/game/GatheringSystem.js';
 
 const initialGameState = (classId, playerName) => {
   const classData = CLASSES[classId];
@@ -53,6 +56,7 @@ export default function Game() {
   const [showInventory, setShowInventory] = useState(false);
   const [showSkills, setShowSkills] = useState(false);
   const [lootItem, setLootItem] = useState(null);
+  const [craftingNPC, setCraftingNPC] = useState(null);
 
   // Stable update callback
   const handleStateUpdate = useCallback((newState) => {
@@ -112,6 +116,7 @@ export default function Game() {
       if (e.key === 'Escape') {
         setShowInventory(false);
         setShowSkills(false);
+        setCraftingNPC(null);
         if (gameState?.dialogueNPC) {
           setGameState(prev => ({ ...prev, dialogueNPC: null }));
         }
@@ -119,14 +124,21 @@ export default function Game() {
       if (e.key === 'i' || e.key === 'I') setShowInventory(v => !v);
       if (e.key === 'k' || e.key === 'K') setShowSkills(v => !v);
 
-      // Dialogue advance with F
+      // Dialogue / crafting advance with F
       if (e.key === 'f' || e.key === 'F') {
         if (gameState?.dialogueNPC) {
-          const lines = gameState.dialogueNPC.dialogue || [];
-          if (gameState.dialogueIndex < lines.length - 1) {
-            setGameState(prev => ({ ...prev, dialogueIndex: prev.dialogueIndex + 1 }));
-          } else {
+          const npcRole = getNPCRole(gameState.dialogueNPC.name || '');
+          if (npcRole) {
+            // Open crafting panel instead of dialogue
+            setCraftingNPC(gameState.dialogueNPC);
             setGameState(prev => ({ ...prev, dialogueNPC: null, dialogueIndex: 0 }));
+          } else {
+            const lines = gameState.dialogueNPC.dialogue || [];
+            if (gameState.dialogueIndex < lines.length - 1) {
+              setGameState(prev => ({ ...prev, dialogueIndex: prev.dialogueIndex + 1 }));
+            } else {
+              setGameState(prev => ({ ...prev, dialogueNPC: null, dialogueIndex: 0 }));
+            }
           }
         }
       }
@@ -175,6 +187,63 @@ export default function Game() {
     });
   }
 
+  function handleUseItem(item) {
+    if (!item?.useEffect) return;
+    setGameState(prev => {
+      if (!prev) return prev;
+      let inv = [...(prev.inventory || [])];
+      // Consume one from stack
+      const idx = inv.findIndex(i => i.id === item.id && i.isResource);
+      if (idx === -1) return prev;
+      const stack = { ...inv[idx] };
+      if ((stack.qty || 1) <= 1) {
+        inv.splice(idx, 1);
+      } else {
+        stack.qty = (stack.qty || 1) - 1;
+        inv[idx] = stack;
+      }
+      const newHp = Math.min(prev.maxHp, prev.hp + (item.useEffect.hp || 0));
+      return { ...prev, inventory: inv, hp: newHp };
+    });
+  }
+
+  function handleCraft(recipe) {
+    setGameState(prev => {
+      if (!prev) return prev;
+      let inv = craftConsume(prev.inventory || [], recipe);
+
+      if (recipe.special === 'upgrade_weapon') {
+        // Upgrade equipped weapon +8 ATK
+        const weapon = prev.equipped?.weapon;
+        if (!weapon) return prev;
+        const upgraded = { ...weapon, name: weapon.name + ' (+)', stats: { ...weapon.stats, attack: (weapon.stats?.attack || 0) + 8 } };
+        return { ...prev, inventory: inv, equipped: { ...prev.equipped, weapon: upgraded } };
+      }
+      if (recipe.special === 'upgrade_armor') {
+        const chest = prev.equipped?.chest;
+        if (!chest) return prev;
+        const upgraded = { ...chest, name: chest.name + ' (+)', stats: { ...chest.stats, defense: (chest.stats?.defense || 0) + 6 } };
+        return { ...prev, inventory: inv, equipped: { ...prev.equipped, chest: upgraded } };
+      }
+
+      // Produce output item
+      const tmpl = recipe.outputTemplate || recipe.output;
+      if (!tmpl) return { ...prev, inventory: inv };
+
+      let output;
+      if (tmpl.isResource) {
+        // Stack resource output
+        output = { ...tmpl, id: tmpl.id || recipe.id, qty: tmpl.qty || 1 };
+        inv = addResourcesToInventory(inv, [output]);
+      } else {
+        // Gear item
+        output = { ...tmpl, id: `crafted_${recipe.id}_${Date.now()}`, isResource: false, stats: tmpl.stats || {} };
+        inv = [...inv, output];
+      }
+      return { ...prev, inventory: inv };
+    });
+  }
+
   function handleUpgradeSkill(key) {
     setGameState(prev => {
       if (!prev || (prev.skillPoints || 0) <= 0) return prev;
@@ -217,6 +286,7 @@ export default function Game() {
           onClose={() => setShowInventory(false)}
           onEquip={handleEquip}
           onUnequip={handleUnequip}
+          onUseItem={handleUseItem}
         />
       )}
 
@@ -236,6 +306,16 @@ export default function Game() {
           dialogueIndex={gameState.dialogueIndex || 0}
           onNext={() => setGameState(prev => ({ ...prev, dialogueIndex: (prev.dialogueIndex || 0) + 1 }))}
           onClose={() => setGameState(prev => ({ ...prev, dialogueNPC: null, dialogueIndex: 0 }))}
+        />
+      )}
+
+      {/* Crafting Panel */}
+      {craftingNPC && gameState && (
+        <CraftingPanel
+          npc={craftingNPC}
+          gameState={gameState}
+          onClose={() => setCraftingNPC(null)}
+          onCraft={handleCraft}
         />
       )}
 
