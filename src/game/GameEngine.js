@@ -25,6 +25,11 @@ export class GameEngine {
     this.px = 40 * TILE_SIZE;
     this.py = 40 * TILE_SIZE;
 
+    // Click-to-move
+    this.destination = null;
+    this.clickIndicator = null;
+    this.facingAngle = 0; // radians, 0 = right
+
     // Visual effects
     this.effects = [];
     this.damageNumbers = [];
@@ -46,7 +51,6 @@ export class GameEngine {
   _bindKeys() {
     this._onKeyDown = (e) => {
       const k = e.key.toLowerCase();
-      this.keys[k] = true;
 
       // Skill keys
       if (k === 'q') this._useSkill('Q');
@@ -54,14 +58,23 @@ export class GameEngine {
       if (k === 'e') this._useSkill('E');
       if (k === 'r') this._useSkill('R');
       if (k === 'f') this._interact();
+    };
 
-      e.preventDefault();
+    this._onMouseDown = (e) => {
+      // Only left click
+      if (e.button !== 0) return;
+      // Ignore clicks on UI elements (anything that's not the canvas)
+      if (e.target !== this.canvas) return;
+
+      const worldX = e.clientX + this.camX;
+      const worldY = e.clientY + this.camY;
+
+      this.destination = { x: worldX, y: worldY };
+      this.clickIndicator = { x: worldX, y: worldY, life: 0.6, maxLife: 0.6 };
     };
-    this._onKeyUp = (e) => {
-      this.keys[e.key.toLowerCase()] = false;
-    };
+
     window.addEventListener('keydown', this._onKeyDown);
-    window.addEventListener('keyup', this._onKeyUp);
+    this.canvas.addEventListener('mousedown', this._onMouseDown);
   }
 
   _resize() {
@@ -79,7 +92,7 @@ export class GameEngine {
     this.running = false;
     if (this.animFrame) cancelAnimationFrame(this.animFrame);
     window.removeEventListener('keydown', this._onKeyDown);
-    window.removeEventListener('keyup', this._onKeyUp);
+    this.canvas.removeEventListener('mousedown', this._onMouseDown);
   }
 
   _loop() {
@@ -98,24 +111,48 @@ export class GameEngine {
     const gs = this.gameState;
     const spd = PLAYER_SPEED * (gs.classData?.baseStats?.speed || 1.0) * dt;
 
-    // Movement
-    let dx = 0, dy = 0;
-    if (this.keys['a'] || this.keys['arrowleft'])  dx -= 1;
-    if (this.keys['d'] || this.keys['arrowright']) dx += 1;
-    if (this.keys['w'] || this.keys['arrowup'])    dy -= 1;
-    if (this.keys['s'] || this.keys['arrowdown'])  dy += 1;
+    // Click-to-move
+    let moved = false;
+    if (this.destination) {
+      const ddx = this.destination.x - this.px;
+      const ddy = this.destination.y - this.py;
+      const dist = Math.sqrt(ddx * ddx + ddy * ddy);
 
-    if (dx !== 0 && dy !== 0) { dx *= 0.707; dy *= 0.707; }
+      if (dist < 4) {
+        // Reached destination
+        this.destination = null;
+      } else {
+        const nx = this.px + (ddx / dist) * spd;
+        const ny = this.py + (ddy / dist) * spd;
 
-    const nx = this.px + dx * spd;
-    const ny = this.py + dy * spd;
+        this.facingAngle = Math.atan2(ddy, ddx);
 
-    // Collision
-    if (!this._isBlocked(nx, this.py)) this.px = nx;
-    if (!this._isBlocked(this.px, ny)) this.py = ny;
+        // Try direct movement; if blocked try sliding along axes
+        if (!this._isBlocked(nx, ny)) {
+          this.px = nx;
+          this.py = ny;
+        } else if (!this._isBlocked(nx, this.py)) {
+          this.px = nx;
+          this.destination = { x: this.destination.x, y: this.py };
+        } else if (!this._isBlocked(this.px, ny)) {
+          this.py = ny;
+          this.destination = { x: this.px, y: this.destination.y };
+        } else {
+          // Fully blocked — cancel destination
+          this.destination = null;
+        }
+        moved = true;
+      }
+    }
 
     this.px = Math.max(TILE_SIZE, Math.min(WORLD_WIDTH - TILE_SIZE, this.px));
     this.py = Math.max(TILE_SIZE, Math.min(WORLD_HEIGHT - TILE_SIZE, this.py));
+
+    // Click indicator lifetime
+    if (this.clickIndicator) {
+      this.clickIndicator.life -= dt;
+      if (this.clickIndicator.life <= 0) this.clickIndicator = null;
+    }
 
     // Camera
     this.camX = this.px - this.canvas.width / 2;
@@ -179,7 +216,7 @@ export class GameEngine {
     }
 
     // XP gain from moving (demo — replace with combat)
-    if ((dx !== 0 || dy !== 0) && Math.random() < 0.002) {
+    if (moved && Math.random() < 0.002) {
       this._gainXP(Math.floor(5 + gs.level * 2));
     }
 
@@ -364,6 +401,11 @@ export class GameEngine {
     // Zone label
     if (this.zoneLabel) {
       this._drawZoneLabel(ctx, W, H);
+    }
+
+    // Click indicator
+    if (this.clickIndicator) {
+      this._drawClickIndicator(ctx);
     }
 
     // Interact prompt
@@ -571,11 +613,21 @@ export class GameEngine {
     ctx.stroke();
     ctx.strokeRect(px - 8, py - 4, 16, 18);
 
+    // Facing direction indicator
+    const faceX = px + Math.cos(this.facingAngle) * 16;
+    const faceY = py + Math.sin(this.facingAngle) * 16;
+    ctx.strokeStyle = tier.color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(faceX, faceY);
+    ctx.stroke();
+
     // Weapon indicator
     const icon = gs.classData?.icon || '⚔️';
     ctx.font = '14px serif';
     ctx.textAlign = 'center';
-    ctx.fillText(icon, px + 14, py + 2);
+    ctx.fillText(icon, faceX, faceY);
 
     // Nameplate
     ctx.font = 'bold 11px Cinzel, serif';
@@ -684,6 +736,28 @@ export class GameEngine {
     ctx.shadowColor = '#000';
     ctx.shadowBlur = 8;
     ctx.fillText(this.zoneLabel.name, W / 2, H * 0.18);
+    ctx.restore();
+  }
+
+  _drawClickIndicator(ctx) {
+    const ci = this.clickIndicator;
+    const sx = ci.x - this.camX;
+    const sy = ci.y - this.camY;
+    const alpha = ci.life / ci.maxLife;
+    const scale = 1 + (1 - alpha) * 0.5;
+
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.85;
+    ctx.strokeStyle = '#ffe88a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 10 * scale, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,232,138,0.4)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 16 * scale, 0, Math.PI * 2);
+    ctx.stroke();
     ctx.restore();
   }
 

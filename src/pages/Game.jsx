@@ -244,7 +244,7 @@ export default function Game() {
       {/* Controls hint */}
       <div className="fixed bottom-20 left-3 z-30 text-xs font-cinzel space-y-0.5"
         style={{ color: '#2a1a0a' }}>
-        <div>WASD — Move</div>
+        <div>Click — Move</div>
         <div>QWER — Abilities</div>
         <div>F — Interact</div>
         <div>I — Inventory · K — Skills</div>
