@@ -79,17 +79,17 @@ export class EnemyManager {
   }
 
   _initialSpawn() {
-    // Zone boundaries [colMin, colMax, rowMin, rowMax]
+    // Zone boundaries [colMin, colMax, rowMin, rowMax] — matches new 500×500 world layout
     const ZONE_BOUNDS = {
-      1: [0,   80,  0,   80],
-      2: [80, 160,  0,   80],
-      3: [0,   80,  80, 160],
-      4: [80, 160,  80, 160],
-      5: [60, 140,  60, 140],
+      1: [0,   500, 300, 500],  // Starter Plains — south band
+      2: [0,   500, 200, 320],  // Wildwood Frontier — middle-low
+      3: [0,   500, 100, 220],  // Ironvale Expanse — middle-high
+      4: [0,   500,   0, 120],  // Frostthorn Reach — far north
+      5: [130, 380, 150, 270],  // Shadowfall Wastes — central pocket
     };
 
-    // Count per zone
-    const ZONE_COUNT = { 1: 12, 2: 12, 3: 10, 4: 10, 5: 8 };
+    // Many more enemies spread across the large world
+    const ZONE_COUNT = { 1: 55, 2: 55, 3: 45, 4: 45, 5: 30 };
 
     for (const [zoneId, types] of Object.entries(ZONE_ENEMIES)) {
       const bounds = ZONE_BOUNDS[zoneId];
@@ -155,8 +155,8 @@ export class EnemyManager {
     if (col < 1 || col >= WORLD_COLS - 1 || row < 1 || row >= WORLD_ROWS - 1) return true;
     if (this.world.getTile(col, row) === TILE.WATER) return true;
     if (this.world.isBlocked(col, row)) return true;
-    // Don't spawn near player start
-    if (Math.abs(col - 40) < 8 && Math.abs(row - 40) < 8) return true;
+    // Don't spawn near player start (Evergreen Hollow col 248, row 448)
+    if (Math.abs(col - 248) < 14 && Math.abs(row - 448) < 14) return true;
     return false;
   }
 

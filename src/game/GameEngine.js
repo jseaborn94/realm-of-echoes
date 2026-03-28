@@ -23,9 +23,9 @@ export class GameEngine {
     this.camX = 0;
     this.camY = 0;
 
-    // Player position (world px)
-    this.px = 40 * TILE_SIZE;
-    this.py = 40 * TILE_SIZE;
+    // Player position (world px) — Evergreen Hollow spawn
+    this.px = 248 * TILE_SIZE;
+    this.py = 448 * TILE_SIZE;
 
     // Click-to-move
     this.destination = null;
@@ -248,13 +248,13 @@ export class GameEngine {
     // Player death check
     if (gs.hp <= 0) {
       gs.hp = gs.maxHp * 0.3;
-      this.px = 40 * TILE_SIZE;
-      this.py = 40 * TILE_SIZE;
+      this.px = 248 * TILE_SIZE;
+      this.py = 448 * TILE_SIZE;
       this.destination = null;
       this.damageNumbers.push({ x: this.px, y: this.py - 40, text: 'DEFEATED! Respawning...', color: '#ff4444', life: 3.0, big: true });
     }
 
-    this.onStateUpdate({ ...gs, cooldowns: { ...this.cooldowns }, nearNPC: this.nearNPC, nearChest: this.nearChest });
+    this.onStateUpdate({ ...gs, cooldowns: { ...this.cooldowns }, nearNPC: this.nearNPC, nearChest: this.nearChest, playerWorldX: this.px, playerWorldY: this.py });
   }
 
   _isBlocked(wx, wy) {
