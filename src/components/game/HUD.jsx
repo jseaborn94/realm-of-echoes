@@ -118,6 +118,14 @@ export default function HUD({ gameState, onOpenInventory, onOpenSkills }) {
           <StatBar value={xp} max={xpNeeded} className="bar-xp" />
         </div>
 
+        {/* Kills / combat stats */}
+        {gameState.kills > 0 && (
+          <div className="mt-2 flex items-center gap-1">
+            <span className="text-xs font-cinzel" style={{ color: '#ff6644' }}>⚔ {gameState.kills}</span>
+            <span className="text-xs" style={{ color: '#3a2a1a' }}>kills</span>
+          </div>
+        )}
+
         {/* Skill points */}
         {skillPoints > 0 && (
           <div className="mt-2 flex items-center gap-2 cursor-pointer" onClick={onOpenSkills}>

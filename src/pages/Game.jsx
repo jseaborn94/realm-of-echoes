@@ -39,6 +39,7 @@ const initialGameState = (classId, playerName) => {
     dialogueNPC: null,
     dialogueIndex: 0,
     lootFound: null,
+    kills: 0,
   };
 };
 

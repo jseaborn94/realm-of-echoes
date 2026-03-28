@@ -3,6 +3,7 @@ import {
   PLAYER_SPEED, FOG_RADIUS, getLevelTierColor, xpForLevel, getZoneAt
 } from './constants.js';
 import { WorldGenerator, TILE_COLORS, TILE, OBJ } from './WorldGenerator.js';
+import { EnemyManager } from './EnemyManager.js';
 
 export class GameEngine {
   constructor(canvas, gameState, onStateUpdate) {
@@ -12,6 +13,7 @@ export class GameEngine {
     this.onStateUpdate = onStateUpdate;
 
     this.world = new WorldGenerator();
+    this.enemyManager = new EnemyManager(this.world);
     this.keys = {};
     this.running = false;
     this.lastTime = 0;
@@ -215,9 +217,41 @@ export class GameEngine {
       if (dist <= 2) { this.nearChest = chest; break; }
     }
 
-    // XP gain from moving (demo — replace with combat)
-    if (moved && Math.random() < 0.002) {
-      this._gainXP(Math.floor(5 + gs.level * 2));
+    // ── Enemy AI & Combat ──
+    const pushDmgNum = (x, y, text, color, big) => {
+      this.damageNumbers.push({ x, y, text, color, life: 1.2, big: !!big });
+    };
+    const pushEff = (x, y, radius, life, color) => {
+      this.effects.push({ x, y, radius, life, maxLife: life, color });
+    };
+
+    const enemyResult = this.enemyManager.update(dt, this.px, this.py, gs, pushDmgNum, pushEff);
+
+    // Player takes damage from enemies
+    if (enemyResult.playerDmgTotal > 0) {
+      gs.hp = Math.max(0, gs.hp - enemyResult.playerDmgTotal);
+    }
+
+    // XP from kills
+    if (enemyResult.xpGained > 0) {
+      this._gainXP(enemyResult.xpGained);
+      gs.kills = (gs.kills || 0) + enemyResult.killCount;
+    }
+
+    // Loot drops from kills
+    if (enemyResult.lootDrops.length > 0) {
+      const loot = enemyResult.lootDrops[0]; // show first loot item
+      gs.inventory = [...(gs.inventory || []), ...enemyResult.lootDrops];
+      gs.lootFound = loot;
+    }
+
+    // Player death check
+    if (gs.hp <= 0) {
+      gs.hp = gs.maxHp * 0.3;
+      this.px = 40 * TILE_SIZE;
+      this.py = 40 * TILE_SIZE;
+      this.destination = null;
+      this.damageNumbers.push({ x: this.px, y: this.py - 40, text: 'DEFEATED! Respawning...', color: '#ff4444', life: 3.0, big: true });
     }
 
     this.onStateUpdate({ ...gs, cooldowns: { ...this.cooldowns }, nearNPC: this.nearNPC, nearChest: this.nearChest });
@@ -261,53 +295,35 @@ export class GameEngine {
 
     gs.mp -= cost;
 
-    // Damage calc
-    const lvlBonus = 1 + (gs.skillLevels?.[key] || 0) * 0.3;
-    const atk = (gs.classData?.baseStats?.attack || 20) + (gs.equipStats?.attack || 0);
-    let dmg = 0;
+    // Apply damage to real enemies
+    const skillLevel = gs.skillLevels?.[key] || 0;
+    const classAtk = gs.classData?.baseStats?.attack || 20;
+    const equipAtk = gs.equipStats?.attack || 0;
 
-    if (ability.type === 'single') dmg = Math.floor((atk * (1.2 + Math.random() * 0.4)) * lvlBonus);
-    if (ability.type === 'aoe') dmg = Math.floor((atk * (0.8 + Math.random() * 0.3)) * lvlBonus);
-    if (ability.type === 'utility') dmg = 0;
-    if (ability.type === 'ultimate') dmg = Math.floor((atk * (2.5 + Math.random() * 0.5)) * lvlBonus);
-
-    // Effects
-    const angle = Math.random() * Math.PI * 2;
-    const range = ability.type === 'aoe' ? 120 : (ability.type === 'ultimate' ? 150 : 80);
-
-    if (ability.type === 'aoe' || ability.type === 'ultimate') {
-      for (let i = 0; i < (ability.type === 'ultimate' ? 8 : 5); i++) {
-        const a = (i / (ability.type === 'ultimate' ? 8 : 5)) * Math.PI * 2;
-        this.effects.push({
-          x: this.px + Math.cos(a) * range * 0.6,
-          y: this.py + Math.sin(a) * range * 0.6,
-          radius: 20,
-          life: 0.4,
-          maxLife: 0.4,
-          color: gs.classData.color,
+    if (ability.type !== 'utility') {
+      const hits = this.enemyManager.applyAbilityDamage(this.px, this.py, ability.type, skillLevel, classAtk, equipAtk);
+      for (const hit of hits) {
+        this.damageNumbers.push({
+          x: hit.x + (Math.random() - 0.5) * 30,
+          y: hit.y - 20,
+          text: `-${hit.dmg}`,
+          color: ability.type === 'ultimate' ? '#ff9800' : '#ffffff',
+          life: 1.2,
+          big: ability.type === 'ultimate',
         });
+        if (hit.killed) {
+          this.effects.push({ x: hit.x, y: hit.y, radius: 30, life: 0.5, maxLife: 0.5, color: '#ff4444' });
+          this.damageNumbers.push({ x: hit.x, y: hit.y - 30, text: 'SLAIN!', color: '#ffe74a', life: 1.5, big: false });
+        }
       }
-    }
-
-    this.effects.push({
-      x: this.px + Math.cos(angle) * range,
-      y: this.py + Math.sin(angle) * range,
-      radius: ability.type === 'aoe' ? 50 : 25,
-      life: 0.5,
-      maxLife: 0.5,
-      color: gs.classData?.color || '#ffffff',
-    });
-
-    if (dmg > 0) {
-      this.damageNumbers.push({
-        x: this.px + (Math.random() - 0.5) * 60,
-        y: this.py - 20,
-        text: `-${dmg}`,
-        color: ability.type === 'ultimate' ? '#ff9800' : '#ffffff',
-        life: 1.2,
-        big: ability.type === 'ultimate',
+      // Also show the directional effect like before
+      this.effects.push({
+        x: this.px + Math.cos(Math.random() * Math.PI * 2) * (ability.type === 'aoe' ? 100 : 70),
+        y: this.py + Math.sin(Math.random() * Math.PI * 2) * (ability.type === 'aoe' ? 100 : 70),
+        radius: ability.type === 'aoe' ? 50 : 25,
+        life: 0.5, maxLife: 0.5,
+        color: gs.classData?.color || '#ffffff',
       });
-      this._gainXP(Math.floor(dmg * 0.5));
     }
 
     if (ability.type === 'utility') {
@@ -382,6 +398,9 @@ export class GameEngine {
 
     // Draw NPCs
     this._drawNPCs(ctx);
+
+    // Draw enemies
+    this.enemyManager.draw(ctx, this.camX, this.camY);
 
     // Draw effects
     this._drawEffects(ctx);
