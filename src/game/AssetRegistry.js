@@ -231,14 +231,26 @@ export const ANIM_META = {
 };
 
 // ─────────────────────────────────────────────
-// HELPER: build a raw GitHub URL for an asset
-// Usage: assetUrl('Factions/Knights/Troops/Warrior/Blue/Warrior_Blue.png', 'free')
+// SOURCE ZIP FILES (at repo root)
+// https://github.com/jseaborn94/realm-of-echoes
 // ─────────────────────────────────────────────
-const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/jseaborn94/realm-of-echoes/main/Assets';
+export const ZIP_SOURCES = {
+  base:  'https://github.com/jseaborn94/realm-of-echoes/raw/main/Tiny%20Swords.zip',
+  free:  'https://github.com/jseaborn94/realm-of-echoes/raw/main/Tiny%20Swords%20(Free%20Pack).zip',
+  enemy: 'https://github.com/jseaborn94/realm-of-echoes/raw/main/Tiny%20Swords%20(Enemy%20Pack).zip',
+};
+
+// ─────────────────────────────────────────────
+// HELPER: build a raw GitHub URL for an extracted asset
+// NOTE: ZIPs must be extracted to serve individual files.
+// Until extraction is done, use ZIP_SOURCES above as the source of truth.
+// Usage (after extraction): assetUrl('Factions/Knights/Troops/Warrior/Blue/Warrior_Blue.png', 'free')
+// ─────────────────────────────────────────────
+const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/jseaborn94/realm-of-echoes/main';
 const PACK_ROOTS = {
-  free:   'Tiny Swords (Free Pack)',
-  enemy:  'Tiny Swords (Enemy Pack)',
-  update: 'Tiny Swords (Update 010)',
+  base:  'Tiny Swords',
+  free:  'Tiny Swords (Free Pack)',
+  enemy: 'Tiny Swords (Enemy Pack)',
 };
 
 export function assetUrl(relativePath, pack = 'free') {
