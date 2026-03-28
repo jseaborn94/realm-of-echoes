@@ -85,5 +85,12 @@ module.exports = {
   		}
   	}
   },
+  safelist: [
+    'bar-hp', 'bar-mp', 'bar-xp',
+    'panel-glass', 'panel-glass-gold',
+    'font-cinzel',
+    'skill-point-badge',
+    'glow-gold', 'glow-blue', 'glow-red', 'glow-yellow', 'glow-purple',
+  ],
   plugins: [require("tailwindcss-animate")],
 }
