@@ -63,10 +63,13 @@ export class GameEngine {
       if (k === 'w') this._useSkill('W');
       if (k === 'e') this._useSkill('E');
       if (k === 'r') this._useSkill('R');
-      if (k === 'f') this._interact();
-      if (k === 'f' && this.nearNode && !this.nearNPC && !this.nearChest) {
-        this.gatheringSystem.startHarvest(this.nearNode.id);
-        this.isGathering = true;
+      if (k === 'f') {
+        if (this.nearNode && !this.nearNPC && !this.nearChest) {
+          this.gatheringSystem.startHarvest(this.nearNode.id);
+          this.isGathering = true;
+        } else {
+          this._interact();
+        }
       }
     };
 

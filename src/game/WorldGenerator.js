@@ -349,13 +349,13 @@ export class WorldGenerator {
       { col: 248, row: 448, name: 'Elder Thaddeus',  dialogue: ["Welcome to the Realm of Echoes.", "Many adventurers set out from Evergreen Hollow — few return from the north.", "Press F to speak to any soul you find."] },
       { col: 250, row: 446, name: 'Blacksmith Oryn', dialogue: ["I can smelt Ore into Metal Bars, and upgrade your gear.", "Bring me 3 Ore to smelt a Metal Bar. Mine rocks in the world to gather Ore.", "Press F to open my crafting menu."] },
       { col: 246, row: 450, name: 'Scout Mira',      dialogue: ["Follow the northern road through the Wildwood.", "The Shadowfall Wastes lie in the heart of the world — avoid them until you're ready.", "I've seen creatures near the lakebed at dusk."] },
-      { col: 95,  row: 413, name: 'Ranger Hollis',   dialogue: ["This western outpost guards the forest path.", "Strange tracks near the river. Something big.", "Stay on the roads at night."] },
-      { col: 405, row: 413, name: 'Merchant Yeva',   dialogue: ["Goods from the east — exotic and expensive.", "The eastern pass leads through the Wildwood faster.", "I deal in rare materials if you find any."] },
+      { col: 95,  row: 413, name: 'Ranger Hollis',   dialogue: ["I craft leather armor from Hide and Metal Bars.", "Gather Hide and Wool from sheep roaming the plains — hold F near them.", "Press F to open my crafting menu."] },
+      { col: 405, row: 413, name: 'Cook Yeva',       dialogue: ["I cook Raw Meat into meals that restore HP.", "Chop trees for Wood to fuel my fire, then gather meat from sheep.", "Press F to open my cooking menu."] },
       // ── Zone 2: Wildwood Frontier ──
       { col: 248, row: 308, name: 'Thornmere Guard',  dialogue: ["Thornmere is the last safe town in the Wildwood.", "The trees grow darker to the north.", "Follow the road — leave it and you risk the beasts."] },
       { col: 250, row: 306, name: 'Herbalist Fenn',   dialogue: ["The wild fungi here have strange properties.", "I once walked to Ironvale — never again alone.", "The crystals in the Shadowfall glow at midnight."] },
-      { col: 100, row: 283, name: 'Woodcutter Bram',  dialogue: ["These trees hum. I've worked here thirty years and never got used to it.", "The ruins to the south-west predate the kingdom.", "Don't stray from the cut paths."] },
-      { col: 395, row: 283, name: 'Trapper Liss',     dialogue: ["The east path is faster but the wolves are worse.", "I've set snares near the old creek.", "You've got brave eyes, traveller. Or foolish ones."] },
+      { col: 100, row: 283, name: 'Weaponsmith Bram',  dialogue: ["I forge blades from Metal Bars and Ore.", "Bring me Metal Bars to craft a new weapon, or upgrade the one you carry.", "Press F to open my weapon forge."] },
+      { col: 395, row: 283, name: 'Armorsmith Liss',  dialogue: ["I build heavy armor from Metal Bars and Hide.", "A well-armored adventurer survives longer. Bring materials and I'll get to work.", "Press F to open my armor forge."] },
       // ── Zone 3: Ironvale Expanse ──
       { col: 248, row: 175, name: 'Ironhaven Elder',  dialogue: ["Ironhaven was built on the bones of an older city.", "The ore flows north into the Frost — follow the veins.", "Do not touch the standing stones at the centre site."] },
       { col: 250, row: 173, name: 'Geomancer Thal',   dialogue: ["The earth here resonates with old power.", "Those boulders were placed deliberately — ancient engineering.", "The Shadowfall Wastes are a wound in the world itself."] },

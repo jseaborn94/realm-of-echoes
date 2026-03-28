@@ -1,7 +1,7 @@
 // Game constants
 export const TILE_SIZE = 32;
-export const WORLD_COLS = 200;
-export const WORLD_ROWS = 200;
+export const WORLD_COLS = 500;
+export const WORLD_ROWS = 500;
 export const WORLD_WIDTH = WORLD_COLS * TILE_SIZE;
 export const WORLD_HEIGHT = WORLD_ROWS * TILE_SIZE;
 
@@ -29,21 +29,31 @@ export function xpForLevel(level) {
   return Math.floor(100 * Math.pow(1.35, level - 1));
 }
 
-// Zones: [startCol, endCol, startRow, endRow]
+// Zones mapped to the 500×500 world
+// Zone layout (row = north is 0, south is 499):
+//   Zone 1 — Starter Plains:    rows 300–499 (south)
+//   Zone 2 — Wildwood Frontier: rows 200–320
+//   Zone 3 — Ironvale Expanse:  rows 100–220
+//   Zone 4 — Frostthorn Reach:  rows 0–120 (north)
+//   Zone 5 — Shadowfall Wastes: cols 130–380, rows 150–270 (central pocket)
 export const ZONES = [
-  { id: 1, name: 'Starter Plains',    color: 'rgba(60,180,60,0.18)',   fogColor: 'rgba(20,40,20,0.92)',  cols: [0,   80],  rows: [0,   80]  },
-  { id: 2, name: 'Wildwood Frontier', color: 'rgba(30,100,40,0.22)',   fogColor: 'rgba(10,25,15,0.93)',  cols: [80,  160], rows: [0,   80]  },
-  { id: 3, name: 'Ironvale Expanse',  color: 'rgba(160,150,60,0.18)', fogColor: 'rgba(30,25,10,0.93)',  cols: [0,   80],  rows: [80,  160] },
-  { id: 4, name: 'Frostthorn Reach',  color: 'rgba(40,120,160,0.20)', fogColor: 'rgba(10,20,35,0.93)',  cols: [80,  160], rows: [80,  160] },
-  { id: 5, name: 'Shadowfall Wastes', color: 'rgba(60,20,80,0.28)',   fogColor: 'rgba(10,5,20,0.95)',   cols: [60,  140], rows: [60,  140] },
+  { id: 1, name: 'Starter Plains',    color: 'rgba(60,180,60,0.18)',  fogColor: 'rgba(20,40,20,0.92)',  cols: [0, 500], rows: [300, 500] },
+  { id: 2, name: 'Wildwood Frontier', color: 'rgba(30,100,40,0.22)',  fogColor: 'rgba(10,25,15,0.93)',  cols: [0, 500], rows: [200, 320] },
+  { id: 3, name: 'Ironvale Expanse',  color: 'rgba(160,150,60,0.18)', fogColor: 'rgba(30,25,10,0.93)',  cols: [0, 500], rows: [100, 220] },
+  { id: 4, name: 'Frostthorn Reach',  color: 'rgba(40,120,160,0.20)', fogColor: 'rgba(10,20,35,0.93)',  cols: [0, 500], rows: [0,   120] },
+  { id: 5, name: 'Shadowfall Wastes', color: 'rgba(60,20,80,0.28)',   fogColor: 'rgba(10,5,20,0.95)',   cols: [130, 380], rows: [150, 270] },
 ];
 
 export function getZoneAt(col, row) {
-  // Zone 5 is in the center
-  if (col >= 60 && col < 140 && row >= 60 && row < 140) return ZONES[4];
-  if (col >= 80 && col < 160 && row >= 80 && row < 160) return ZONES[3];
-  if (col >= 0  && col < 80  && row >= 80 && row < 160) return ZONES[2];
-  if (col >= 80 && col < 160 && row >= 0  && row < 80)  return ZONES[1];
+  // Zone 5 is a central pocket — check first (highest priority)
+  if (col >= 130 && col < 380 && row >= 150 && row < 270) return ZONES[4];
+  // Zone 4 — Frostthorn (far north)
+  if (row < 120) return ZONES[3];
+  // Zone 3 — Ironvale
+  if (row < 220) return ZONES[2];
+  // Zone 2 — Wildwood
+  if (row < 320) return ZONES[1];
+  // Zone 1 — Starter Plains (default south)
   return ZONES[0];
 }
 

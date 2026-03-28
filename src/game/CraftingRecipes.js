@@ -2,24 +2,24 @@
 // npcRole matches NPC names in WorldGenerator to identify which NPC handles what
 
 export const NPC_ROLES = {
-  blacksmith: ['Blacksmith Oryn'],
-  cook:       ['Herbalist Fenn'],   // Herbalist acts as cook
-  weaponsmith:['Merchant Yeva'],    // Merchant crafts weapons
-  armorsmith: ['Ranger Hollis'],    // Ranger crafts armor
+  blacksmith:  ['Blacksmith Oryn'],
+  cook:        ['Cook Yeva', 'Herbalist Fenn'],
+  weaponsmith: ['Weaponsmith Bram'],
+  armorsmith:  ['Armorsmith Liss', 'Ranger Hollis'],
 };
 
 // Returns the crafting role for a given NPC name
 export function getNPCRole(npcName) {
   for (const [role, names] of Object.entries(NPC_ROLES)) {
-    if (names.some(n => npcName.includes(n.split(' ')[0]) || n.includes(npcName.split(' ')[0]))) {
+    if (names.some(n => npcName.toLowerCase().includes(n.split(' ')[0].toLowerCase()))) {
       return role;
     }
   }
   // Fallback by keyword
-  if (/smith|forge|oryn/i.test(npcName)) return 'blacksmith';
-  if (/cook|herb|fenn|food/i.test(npcName)) return 'cook';
-  if (/weapon|blade|merch|yeva/i.test(npcName)) return 'weaponsmith';
-  if (/armor|armour|ranger|hollis/i.test(npcName)) return 'armorsmith';
+  if (/blacksmith|oryn|forge/i.test(npcName)) return 'blacksmith';
+  if (/cook|yeva|herb|fenn|food/i.test(npcName)) return 'cook';
+  if (/weaponsmith|bram|weapon|blade/i.test(npcName)) return 'weaponsmith';
+  if (/armorsmith|liss|armor|armour/i.test(npcName)) return 'armorsmith';
   return null;
 }
 
@@ -84,7 +84,7 @@ export const RECIPES = {
       description: 'Rich stew — restores 180 HP',
       inputs: [
         { id: 'raw_meat', name: 'Raw Meat', icon: '🥩', qty: 2 },
-        { id: 'wool',     name: 'Wool',     icon: '🧶', qty: 1 },
+        { id: 'wood',     name: 'Wood',     icon: '🪵', qty: 1 },
       ],
       output: {
         id: 'hearty_stew',
