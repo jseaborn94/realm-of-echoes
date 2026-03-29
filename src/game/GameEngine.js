@@ -25,7 +25,7 @@ export class GameEngine {
     // Camera & zoom
     this.camX = 0;
     this.camY = 0;
-    this.zoom = 1.4; // world pixels → screen pixels scale factor
+    this.zoom = 1.6; // world pixels → screen pixels scale factor
 
     // Player position (world px) — Evergreen Hollow spawn (organic layout: col 185, row 390)
     this.px = 185 * TILE_SIZE;
