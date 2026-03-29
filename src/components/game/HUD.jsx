@@ -1,14 +1,22 @@
 import React from 'react';
 import { getLevelTierColor, xpForLevel } from '../../game/constants.js';
 import MiniMap from './MiniMap.jsx';
+import UIBarRenderer from './UIBarRenderer.jsx';
+import UISpriteButton from './UISpriteButton.jsx';
 
-function StatBar({ value, max, className, style }) {
-  const pct = Math.max(0, Math.min(100, (value / max) * 100));
+function StatBar({ value, max, className, style, barType = 'small' }) {
+  const pct = Math.max(0, Math.min(1, value / max));
   return (
-    <div className="relative h-3 rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.08)', ...style }}>
-      <div className={`h-full rounded-full transition-all duration-300 ${className}`} style={{ width: `${pct}%` }} />
+    <div className="relative h-3 overflow-hidden" style={{ ...style }}>
+      {/* Sprite bar overlay (if available, will render transparently on top) */}
+      <div className="absolute inset-0 pointer-events-none">
+        <UIBarRenderer fillPercent={pct} barType={barType} style={{ width: '100%', height: '100%' }} />
+      </div>
+      {/* Fallback CSS bar (shows if sprite fails) */}
+      <div className={`h-full transition-all duration-300 ${className}`} style={{ width: `${pct * 100}%` }} />
+      {/* Text overlay */}
       <span className="absolute inset-0 flex items-center justify-center text-white"
-        style={{ fontSize: '8px', fontFamily: 'Cinzel, serif', textShadow: '0 1px 2px black' }}>
+        style={{ fontSize: '8px', fontFamily: 'Cinzel, serif', textShadow: '0 1px 2px black', zIndex: 10 }}>
         {Math.floor(value)}/{Math.floor(max)}
       </span>
     </div>
@@ -240,16 +248,20 @@ export default function HUD({ gameState, onOpenInventory, onOpenSkills }) {
 
       {/* Bottom right: Panel buttons */}
       <div className="fixed bottom-5 right-3 z-40 flex flex-col gap-2">
-        <button onClick={onOpenInventory}
-          className="panel-glass rounded-lg px-3 py-2 font-cinzel text-xs hover:border-yellow-500/50 transition-colors"
-          style={{ color: '#ffe88a' }}>
+        <UISpriteButton 
+          onClick={onOpenInventory}
+          variant="blue"
+          className="px-3 py-2"
+          style={{ color: '#ffe88a', minWidth: '100px' }}>
           🎒 Inventory
-        </button>
-        <button onClick={onOpenSkills}
-          className="panel-glass rounded-lg px-3 py-2 font-cinzel text-xs hover:border-yellow-500/50 transition-colors"
-          style={{ color: '#ffe88a' }}>
+        </UISpriteButton>
+        <UISpriteButton 
+          onClick={onOpenSkills}
+          variant="blue"
+          className="px-3 py-2"
+          style={{ color: '#ffe88a', minWidth: '100px' }}>
           ✨ Skills
-        </button>
+        </UISpriteButton>
       </div>
 
       {/* Mini-map — organic zones canvas */}
