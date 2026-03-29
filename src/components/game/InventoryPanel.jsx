@@ -36,8 +36,8 @@ function EquipSlot({ slot, item, onDrop, onUnequip, isWarrior, classId }) {
         // Block off-class weapon drops into equip slot
         if (itemData.slot === slot && !isOffClassWeapon(itemData, classId)) onDrop(itemData, slot);
       }}
-      onDoubleClick={() => item && onUnequip(item, slot)}
-      title={item ? `Double-click to unequip ${item.name}` : `${slot} slot`}
+      onClick={() => item && onUnequip(item, slot)}
+      title={item ? `Click to unequip ${item.name}` : `${slot} slot`}
     >
       {item ? (
         <>
@@ -62,6 +62,14 @@ function InvItem({ item, onEquip, onUse, classId }) {
   const [showTip, setShowTip] = useState(false);
   const offClass = isOffClassWeapon(item, classId);
   const [isDragging, setIsDragging] = useState(false);
+
+  const handleClick = () => {
+    const canDrag = isDraggable(item);
+    const classMatch = meetsClassRestriction(item, classId);
+    if (canDrag && classMatch) {
+      onEquip(item, item.slot);
+    }
+  };
 
   if (item.isResource) {
     // Resource / consumable stacked item
@@ -115,7 +123,7 @@ function InvItem({ item, onEquip, onUse, classId }) {
         e.dataTransfer.setData('application/json', JSON.stringify(item));
       }}
       onDragEnd={() => setIsDragging(false)}
-      onDoubleClick={() => canDrag && classMatch && onEquip(item)}
+      onClick={handleClick}
       onMouseEnter={() => setShowTip(true)}
       onMouseLeave={() => setShowTip(false)}
       animate={{ opacity: isDragging ? 0.5 : 1, scale: isDragging ? 0.9 : 1 }}
@@ -252,7 +260,7 @@ export default function InventoryPanel({ gameState, onClose, onEquip, onUnequip,
                 )}
               </div>
               <p className="mt-3 text-xs" style={{ color: '#3a2a1a', fontFamily: 'Crimson Text, serif' }}>
-                💡 Drag items to equip slots on the left, or drag equipped items back to unequip
+                💡 Click or drag items to equip/unequip
               </p>
             </div>
           </div>
