@@ -12,28 +12,38 @@ const SLOT_ICONS = {
   shield: '🛡️',
 };
 
-function ItemTooltip({ item }) {
+const CLASS_LABEL = { warrior: 'Warrior', lancer: 'Lancer', archer: 'Archer', monk: 'Monk' };
+
+function ItemTooltip({ item, isOffClass }) {
   if (!item) return null;
   return (
-    <div className="absolute z-50 w-44 panel-glass-gold rounded-lg p-3 pointer-events-none"
+    <div className="absolute z-50 w-48 panel-glass-gold rounded-lg p-3 pointer-events-none"
       style={{ bottom: '110%', left: '50%', transform: 'translateX(-50%)' }}>
       <div className="font-cinzel font-bold text-sm mb-1" style={{ color: RARITY_COLORS[item.rarity] }}>
         {item.name}
       </div>
-      <div className="text-xs mb-2 capitalize" style={{ color: '#6a5a3a' }}>
+      <div className="text-xs mb-1 capitalize" style={{ color: '#6a5a3a' }}>
         {item.rarity} · {item.slot}
       </div>
+      {item.weaponClass && (
+        <div className="text-xs mb-2" style={{ color: isOffClass ? '#ff6644' : '#4caf50' }}>
+          {isOffClass ? `⚠ ${CLASS_LABEL[item.weaponClass]} only` : `✓ ${CLASS_LABEL[item.weaponClass]} weapon`}
+        </div>
+      )}
       {Object.entries(item.stats || {}).map(([stat, val]) => val !== 0 && (
         <div key={stat} className="text-xs flex justify-between">
           <span style={{ color: '#8a7a5a' }}>{stat.toUpperCase()}</span>
           <span style={{ color: '#4caf50' }}>+{val}</span>
         </div>
       ))}
+      {isOffClass && (
+        <div className="text-xs mt-2" style={{ color: '#ff6644' }}>Cannot equip — wrong class</div>
+      )}
     </div>
   );
 }
 
-function EquipSlot({ slot, item, onDrop, onUnequip, isWarrior }) {
+function EquipSlot({ slot, item, onDrop, onUnequip, isWarrior, classId }) {
   const [showTip, setShowTip] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
@@ -54,7 +64,8 @@ function EquipSlot({ slot, item, onDrop, onUnequip, isWarrior }) {
         e.preventDefault();
         setDragOver(false);
         const itemData = JSON.parse(e.dataTransfer.getData('application/json'));
-        if (itemData.slot === slot) onDrop(itemData, slot);
+        // Block off-class weapon drops into equip slot
+        if (itemData.slot === slot && !isOffClassWeapon(itemData, classId)) onDrop(itemData, slot);
       }}
       onDoubleClick={() => item && onUnequip(item, slot)}
       title={item ? `Double-click to unequip ${item.name}` : `${slot} slot`}
@@ -62,7 +73,7 @@ function EquipSlot({ slot, item, onDrop, onUnequip, isWarrior }) {
       {item ? (
         <>
           <span style={{ fontSize: '22px' }}>{item.icon}</span>
-          {showTip && <ItemTooltip item={item} />}
+          {showTip && <ItemTooltip item={item} isOffClass={isOffClassWeapon(item, classId)} />}
           <div className="absolute bottom-0 right-0 left-0 text-center"
             style={{ fontSize: '7px', color: RARITY_COLORS[item.rarity], background: 'rgba(0,0,0,0.6)', borderRadius: '0 0 6px 6px' }}>
             {item.rarity.slice(0, 3).toUpperCase()}
@@ -78,8 +89,9 @@ function EquipSlot({ slot, item, onDrop, onUnequip, isWarrior }) {
   );
 }
 
-function InvItem({ item, onEquip, onUse }) {
+function InvItem({ item, onEquip, onUse, classId }) {
   const [showTip, setShowTip] = useState(false);
+  const offClass = isOffClassWeapon(item, classId);
 
   if (item.isResource) {
     // Resource / consumable stacked item
@@ -120,29 +132,40 @@ function InvItem({ item, onEquip, onUse }) {
 
   return (
     <div
-      className="relative inv-slot has-item rounded-lg flex items-center justify-center cursor-grab w-14 h-14"
-      draggable
+      className="relative inv-slot has-item rounded-lg flex items-center justify-center w-14 h-14"
+      draggable={!offClass}
       onDragStart={e => {
+        if (offClass) { e.preventDefault(); return; }
         e.dataTransfer.setData('application/json', JSON.stringify(item));
       }}
-      onDoubleClick={() => onEquip(item)}
+      onDoubleClick={() => !offClass && onEquip(item)}
       onMouseEnter={() => setShowTip(true)}
       onMouseLeave={() => setShowTip(false)}
-      style={{ borderColor: RARITY_COLORS[item.rarity] + '60' }}
+      style={{
+        borderColor: offClass ? '#ff444440' : RARITY_COLORS[item.rarity] + '60',
+        cursor: offClass ? 'not-allowed' : 'grab',
+        opacity: offClass ? 0.6 : 1,
+      }}
     >
       <span style={{ fontSize: '22px' }}>{item.icon}</span>
-      {showTip && <ItemTooltip item={item} />}
+      {showTip && <ItemTooltip item={item} isOffClass={offClass} />}
       <div className="absolute bottom-0 right-0 left-0 text-center"
-        style={{ fontSize: '7px', color: RARITY_COLORS[item.rarity], background: 'rgba(0,0,0,0.6)', borderRadius: '0 0 6px 6px' }}>
-        {item.rarity.slice(0, 3).toUpperCase()}
+        style={{ fontSize: '7px', color: offClass ? '#ff6644' : RARITY_COLORS[item.rarity], background: 'rgba(0,0,0,0.6)', borderRadius: '0 0 6px 6px' }}>
+        {offClass ? 'N/A' : item.rarity.slice(0, 3).toUpperCase()}
       </div>
     </div>
   );
 }
 
+function isOffClassWeapon(item, classId) {
+  if (!item?.weaponClass) return false;
+  return item.weaponClass !== classId;
+}
+
 export default function InventoryPanel({ gameState, onClose, onEquip, onUnequip, onUseItem }) {
   const { inventory = [], equipped = {}, classData } = gameState;
-  const isWarrior = classData?.id === 'warrior';
+  const classId   = classData?.id || 'warrior';
+  const isWarrior = classId === 'warrior';
 
   // Stats from equipment
   const equipStats = Object.values(equipped).reduce((acc, item) => {
@@ -217,6 +240,7 @@ export default function InventoryPanel({ gameState, onClose, onEquip, onUnequip,
                   slot={slot}
                   item={equipped[slot]}
                   isWarrior={isWarrior}
+                  classId={classId}
                   onDrop={(item, s) => onEquip(item, s)}
                   onUnequip={onUnequip}
                 />
@@ -267,6 +291,7 @@ export default function InventoryPanel({ gameState, onClose, onEquip, onUnequip,
                   slot={slot}
                   item={equipped[slot]}
                   isWarrior={isWarrior}
+                  classId={classId}
                   onDrop={(item, s) => onEquip(item, s)}
                   onUnequip={onUnequip}
                 />
@@ -282,7 +307,7 @@ export default function InventoryPanel({ gameState, onClose, onEquip, onUnequip,
             <div className="grid grid-cols-6 gap-1.5 p-3 rounded-lg min-h-16"
               style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}>
               {bagItems.map(item => (
-                <InvItem key={item.id} item={item} onEquip={i => onEquip(i, i.slot)} onUse={onUseItem} />
+                <InvItem key={item.id} item={item} classId={classId} onEquip={i => onEquip(i, i.slot)} onUse={onUseItem} />
               ))}
               {bagItems.length === 0 && (
                 <div className="col-span-6 text-center py-4 font-cinzel text-xs" style={{ color: '#3a2a1a' }}>
