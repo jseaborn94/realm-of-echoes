@@ -19,93 +19,93 @@ import { EQUIPMENT_SPRITES, getTerrainSprite } from './CompleteAssetRegistry.js'
 const GEAR_ANCHOR_POINTS = {
   archer: {
     helmet: {
-      idle:   { offsetX: 0, offsetY: -26, scale: 0.75 },
-      move:   { offsetX: 0, offsetY: -25, scale: 0.75 },
-      attack: { offsetX: 2, offsetY: -27, scale: 0.75 },
+      idle:   { offsetX: 0, offsetY: -22, scale: 0.65 },  // Smaller, lower to show face
+      move:   { offsetX: 0, offsetY: -21, scale: 0.65 },
+      attack: { offsetX: 2, offsetY: -23, scale: 0.65 },
     },
     chest: {
-      idle:   { offsetX: 0, offsetY: -10, scale: 0.85 },
-      move:   { offsetX: 0, offsetY: -9, scale: 0.85 },
-      attack: { offsetX: 1, offsetY: -11, scale: 0.85 },
+      idle:   { offsetX: 0, offsetY: -8, scale: 0.75 },   // Slightly smaller for clarity
+      move:   { offsetX: 0, offsetY: -7, scale: 0.75 },
+      attack: { offsetX: 1, offsetY: -9, scale: 0.75 },
     },
     weapon: {
-      idle:   { offsetX: 6, offsetY: 2, scale: 0.8, flipWithChar: true },
-      move:   { offsetX: 5, offsetY: 3, scale: 0.8, flipWithChar: true },
-      attack: { offsetX: 8, offsetY: -4, scale: 0.85, flipWithChar: true },
+      idle:   { offsetX: 5, offsetY: 3, scale: 0.6, flipWithChar: true },      // Smaller weapon
+      move:   { offsetX: 4, offsetY: 4, scale: 0.6, flipWithChar: true },
+      attack: { offsetX: 6, offsetY: -2, scale: 0.65, flipWithChar: true },
     },
     shield: {
-      idle:   { offsetX: -8, offsetY: 0, scale: 0.75, flipWithChar: true },
-      move:   { offsetX: -7, offsetY: 1, scale: 0.75, flipWithChar: true },
-      attack: { offsetX: -6, offsetY: -2, scale: 0.75, flipWithChar: true },
+      idle:   { offsetX: -6, offsetY: 2, scale: 0.6, flipWithChar: true },     // Compact shield
+      move:   { offsetX: -5, offsetY: 3, scale: 0.6, flipWithChar: true },
+      attack: { offsetX: -4, offsetY: 0, scale: 0.6, flipWithChar: true },
     },
   },
 
   warrior: {
     helmet: {
-      idle:   { offsetX: 0, offsetY: -24, scale: 0.95 },
-      move:   { offsetX: 0, offsetY: -23, scale: 0.95 },
-      attack: { offsetX: 1, offsetY: -25, scale: 0.95 },
+      idle:   { offsetX: 0, offsetY: -20, scale: 0.75 },   // Show more face
+      move:   { offsetX: 0, offsetY: -19, scale: 0.75 },
+      attack: { offsetX: 1, offsetY: -21, scale: 0.75 },
     },
     chest: {
-      idle:   { offsetX: 0, offsetY: -8, scale: 1.1 },
-      move:   { offsetX: 0, offsetY: -7, scale: 1.1 },
-      attack: { offsetX: 0, offsetY: -9, scale: 1.1 },
+      idle:   { offsetX: 0, offsetY: -6, scale: 0.95 },    // Refined size
+      move:   { offsetX: 0, offsetY: -5, scale: 0.95 },
+      attack: { offsetX: 0, offsetY: -7, scale: 0.95 },
     },
     weapon: {
-      idle:   { offsetX: 8, offsetY: 0, scale: 1.0, flipWithChar: true },
-      move:   { offsetX: 7, offsetY: 2, scale: 1.0, flipWithChar: true },
-      attack: { offsetX: 10, offsetY: -6, scale: 1.05, flipWithChar: true },
+      idle:   { offsetX: 6, offsetY: 2, scale: 0.7, flipWithChar: true },      // Smaller weapon
+      move:   { offsetX: 5, offsetY: 4, scale: 0.7, flipWithChar: true },
+      attack: { offsetX: 8, offsetY: -4, scale: 0.75, flipWithChar: true },
     },
     shield: {
-      idle:   { offsetX: -10, offsetY: 0, scale: 0.95, flipWithChar: true },
-      move:   { offsetX: -9, offsetY: 2, scale: 0.95, flipWithChar: true },
-      attack: { offsetX: -8, offsetY: -4, scale: 0.95, flipWithChar: true },
+      idle:   { offsetX: -8, offsetY: 2, scale: 0.8, flipWithChar: true },     // Compact shield
+      move:   { offsetX: -7, offsetY: 3, scale: 0.8, flipWithChar: true },
+      attack: { offsetX: -6, offsetY: -2, scale: 0.8, flipWithChar: true },
     },
   },
 
   lancer: {
     helmet: {
-      idle:   { offsetX: 0, offsetY: -25, scale: 0.8 },
-      move:   { offsetX: 0, offsetY: -24, scale: 0.8 },
-      attack: { offsetX: 1, offsetY: -26, scale: 0.8 },
+      idle:   { offsetX: 0, offsetY: -21, scale: 0.7 },    // Show face better
+      move:   { offsetX: 0, offsetY: -20, scale: 0.7 },
+      attack: { offsetX: 1, offsetY: -22, scale: 0.7 },
     },
     chest: {
-      idle:   { offsetX: 0, offsetY: -9, scale: 0.9 },
-      move:   { offsetX: 0, offsetY: -8, scale: 0.9 },
-      attack: { offsetX: 0, offsetY: -10, scale: 0.9 },
+      idle:   { offsetX: 0, offsetY: -7, scale: 0.8 },     // Refined
+      move:   { offsetX: 0, offsetY: -6, scale: 0.8 },
+      attack: { offsetX: 0, offsetY: -8, scale: 0.8 },
     },
     weapon: {
-      idle:   { offsetX: 4, offsetY: 8, scale: 1.15, flipWithChar: true }, // Spears are longer, positioned lower
-      move:   { offsetX: 3, offsetY: 10, scale: 1.15, flipWithChar: true },
-      attack: { offsetX: 6, offsetY: 0, scale: 1.2, flipWithChar: true }, // Extended for thrust
+      idle:   { offsetX: 3, offsetY: 10, scale: 0.9, flipWithChar: true },     // Scaled back spear
+      move:   { offsetX: 2, offsetY: 12, scale: 0.9, flipWithChar: true },
+      attack: { offsetX: 4, offsetY: 2, scale: 1.0, flipWithChar: true },
     },
     shield: {
-      idle:   { offsetX: -8, offsetY: 0, scale: 0.85, flipWithChar: true },
-      move:   { offsetX: -7, offsetY: 1, scale: 0.85, flipWithChar: true },
-      attack: { offsetX: -6, offsetY: -3, scale: 0.85, flipWithChar: true },
+      idle:   { offsetX: -6, offsetY: 2, scale: 0.7, flipWithChar: true },     // Smaller shield
+      move:   { offsetX: -5, offsetY: 3, scale: 0.7, flipWithChar: true },
+      attack: { offsetX: -4, offsetY: 0, scale: 0.7, flipWithChar: true },
     },
   },
 
   monk: {
     helmet: {
-      idle:   { offsetX: 0, offsetY: -27, scale: 0.7 },
-      move:   { offsetX: 0, offsetY: -26, scale: 0.7 },
-      attack: { offsetX: 1, offsetY: -28, scale: 0.7 },
+      idle:   { offsetX: 0, offsetY: -23, scale: 0.6 },    // Minimal helmet
+      move:   { offsetX: 0, offsetY: -22, scale: 0.6 },
+      attack: { offsetX: 1, offsetY: -24, scale: 0.6 },
     },
     chest: {
-      idle:   { offsetX: 0, offsetY: -12, scale: 0.75 },
-      move:   { offsetX: 0, offsetY: -11, scale: 0.75 },
-      attack: { offsetX: 0, offsetY: -13, scale: 0.75 },
+      idle:   { offsetX: 0, offsetY: -10, scale: 0.65 },   // Light armor
+      move:   { offsetX: 0, offsetY: -9, scale: 0.65 },
+      attack: { offsetX: 0, offsetY: -11, scale: 0.65 },
     },
     weapon: {
-      idle:   { offsetX: 5, offsetY: 0, scale: 0.85, flipWithChar: true },
-      move:   { offsetX: 4, offsetY: 1, scale: 0.85, flipWithChar: true },
-      attack: { offsetX: 7, offsetY: -3, scale: 0.9, flipWithChar: true },
+      idle:   { offsetX: 4, offsetY: 2, scale: 0.6, flipWithChar: true },      // Subtle staff
+      move:   { offsetX: 3, offsetY: 3, scale: 0.6, flipWithChar: true },
+      attack: { offsetX: 5, offsetY: -2, scale: 0.65, flipWithChar: true },
     },
     shield: {
-      idle:   { offsetX: -6, offsetY: 0, scale: 0.7, flipWithChar: true },
-      move:   { offsetX: -5, offsetY: 1, scale: 0.7, flipWithChar: true },
-      attack: { offsetX: -5, offsetY: -2, scale: 0.7, flipWithChar: true },
+      idle:   { offsetX: -4, offsetY: 2, scale: 0.55, flipWithChar: true },    // Minimal shield
+      move:   { offsetX: -3, offsetY: 3, scale: 0.55, flipWithChar: true },
+      attack: { offsetX: -3, offsetY: 0, scale: 0.55, flipWithChar: true },
     },
   },
 };
