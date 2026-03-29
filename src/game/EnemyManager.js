@@ -339,6 +339,9 @@ export class EnemyManager {
       dead: false,
       deathTimer: null,
       isInvulnerable: isDummy,
+      knockbackX: 0,
+      knockbackY: 0,
+      knockbackDuration: 0,
     });
   }
 
@@ -362,6 +365,15 @@ export class EnemyManager {
     if (this.world.isBlocked(col, row)) return true;
     if (Math.abs(col - 185) < 16 && Math.abs(row - 390) < 16) return true;
     return false;
+  }
+
+  /**
+   * Apply knockback to enemy (for hit reactions)
+   */
+  applyKnockback(enemy, dirX, dirY, force, duration = 0.12) {
+    enemy.knockbackX = dirX * force;
+    enemy.knockbackY = dirY * force;
+    enemy.knockbackDuration = duration;
   }
 
   // Trigger camp-wide aggro: all allies sharing the same campId within support radius join the fight

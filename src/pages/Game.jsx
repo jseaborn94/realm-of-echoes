@@ -15,6 +15,7 @@ import CraftingPanel from '@/components/game/CraftingPanel.jsx';
 import WorldMap from '@/components/game/WorldMap.jsx';
 import GMPanel from '@/components/game/GMPanel.jsx';
 import SkillHotbar from '@/components/game/SkillHotbar.jsx';
+import BuffIndicators from '@/components/game/BuffIndicators.jsx';
 import { getNPCRole, consumeInputs as craftConsume } from '@/game/CraftingRecipes.js';
 import { addResourcesToInventory } from '@/game/GatheringSystem.js';
 import { getSkillsByClass } from '@/game/SkillSystem.js';
@@ -416,6 +417,9 @@ export default function Game() {
 
       {/* Skill Hotbar */}
       {gameState && <SkillHotbar gameState={gameState} gameEngine={engineRef.current} />}
+
+      {/* Buff Indicators */}
+      {gameState && <BuffIndicators buffs={gameState._activeBuffs || []} />}
 
       {/* Pause menu button */}
       <button

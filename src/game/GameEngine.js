@@ -12,6 +12,8 @@ import { equipmentRenderer } from './EquipmentRenderer.js';
 import { skillFX } from './SkillFX.js';
 import { getSkillByKey, calculateSkillDamage, canCastSkill } from './SkillSystem.js';
 import { SkillExecutor } from './SkillExecutor.js';
+import { combatFX } from './CombatFX.js';
+import { buffSystem } from './BuffSystem.js';
 
 export class GameEngine {
   constructor(canvas, gameState, onStateUpdate) {
@@ -24,6 +26,7 @@ export class GameEngine {
     this.enemyManager = new EnemyManager(this.world);
     this.gatheringSystem = new GatheringSystem(this.world);
     this.skillExecutor = new SkillExecutor(this);
+    this.buffSystem = buffSystem;
     this.keys = {};
     this.running = false;
     this.lastTime = 0;
@@ -460,6 +463,12 @@ export class GameEngine {
 
     // Update skill FX zones
     skillFX.update(dt);
+    
+    // Update combat effects
+    combatFX.update(dt);
+    
+    // Update buff system
+    buffSystem.update(dt);
     this.damageNumbers = this.damageNumbers.filter(d => {
       d.life -= dt;
       return d.life > 0;
@@ -511,6 +520,17 @@ export class GameEngine {
       }
     }
 
+    // Update enemy knockback and reactions
+    for (const e of this.enemyManager.enemies) {
+      if (e.knockbackDuration && e.knockbackDuration > 0) {
+        e.x += e.knockbackX * dt;
+        e.y += e.knockbackY * dt;
+        e.knockbackDuration -= dt;
+        e.knockbackX *= 0.85; // friction
+        e.knockbackY *= 0.85;
+      }
+    }
+
     // ── Auto-attack ──
     this._updateAutoAttack(dt);
 
@@ -539,11 +559,19 @@ export class GameEngine {
 
     const enemyResult = this.enemyManager.update(dt, this.px, this.py, gs, pushDmgNum, pushEff);
 
-    // Player takes damage from enemies
-    if (enemyResult.playerDmgTotal > 0) {
+    // Player takes damage from enemies (unless invulnerable from buff)
+    if (enemyResult.playerDmgTotal > 0 && !buffSystem.isInvulnerable()) {
       const dmgBefore = gs.hp;
       gs.hp = Math.max(0, Math.min(gs.maxHp, gs.hp - enemyResult.playerDmgTotal));
       console.log(`[DAMAGE] Enemy hit: ${enemyResult.playerDmgTotal} | ${dmgBefore.toFixed(1)} → ${gs.hp.toFixed(1)} | Dead: ${gs.hp <= 0}`);
+    } else if (buffSystem.isInvulnerable() && enemyResult.playerDmgTotal > 0) {
+      combatFX.hit_flashes.push({
+        id: `invuln_${Math.random()}`,
+        x: this.px, y: this.py - 30,
+        duration: 0.12,
+        maxDuration: 0.12,
+        intensity: 0.8,
+      });
     }
 
     // XP from kills
@@ -593,12 +621,17 @@ export class GameEngine {
     const classId = this.gameState.classData?.id || 'warrior';
     // Check equipped weapon for potential range override
     const weapon = this.gameState.equipped?.weapon;
+    
+    // Apply buff attack speed bonus as range increase (slight)
+    const buffMods = buffSystem.getAggregatedModifiers();
+    const speedBonus = buffMods.attackSpeed || 0;
+    
     switch (classId) {
-      case 'archer': return { attackRange: 240, stopRange: 210 };  // ranged — hold well back
-      case 'monk':   return { attackRange: 140, stopRange: 120 };  // mid-range staff
-      case 'lancer': return { attackRange: 62,  stopRange: 54  };  // spear reach
+      case 'archer': return { attackRange: 240 + speedBonus * 40, stopRange: 210 + speedBonus * 40 };
+      case 'monk':   return { attackRange: 140 + speedBonus * 30, stopRange: 120 + speedBonus * 30 };
+      case 'lancer': return { attackRange: 62 + speedBonus * 20,  stopRange: 54 + speedBonus * 20 };
       case 'warrior':
-      default:       return { attackRange: 50,  stopRange: 44  };  // standard sword
+      default:       return { attackRange: 50 + speedBonus * 15,  stopRange: 44 + speedBonus * 15 };
     }
   }
 
@@ -636,8 +669,10 @@ export class GameEngine {
 
       if (this.autoAttackCooldown <= 0) {
         const gs = this.gameState;
-        const totalAtk = (gs.classData?.baseStats?.attack || 22) + (gs.equipStats?.attack || 0);
-        const dmg = Math.max(1, Math.floor(totalAtk * (0.25 + Math.random() * 0.1)) - Math.floor(e.def * 0.5));
+        const baseAtk = (gs.classData?.baseStats?.attack || 22) + (gs.equipStats?.attack || 0);
+        const buffMods = buffSystem.getAggregatedModifiers();
+        const atkWithBuff = baseAtk * (1 + buffMods.attackDamage);
+        const dmg = Math.max(1, Math.floor(atkWithBuff * (0.25 + Math.random() * 0.1)) - Math.floor(e.def * 0.5));
         const hpBefore = e.hp;
         e.hp = Math.max(0, e.hp - dmg);
         e.hitFlash = 0.15;
@@ -821,6 +856,9 @@ export class GameEngine {
     // Draw effects and skill FX
     this._drawEffects(ctx, wcamX, wcamY);
     skillFX.draw(ctx, wcamX, wcamY, z);
+    
+    // Draw combat effects (melee impacts, projectiles, buff auras, etc.)
+    combatFX.draw(ctx, wcamX, wcamY, z);
 
     // Draw targeting preview (world-space, before player so player renders on top)
     if (this.targeting.active && this.targeting.config?.type !== 'self_aoe') {

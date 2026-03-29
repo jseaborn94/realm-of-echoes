@@ -184,6 +184,25 @@ export default function HUD({ gameState, onOpenInventory, onOpenSkills }) {
             <span className="text-xs font-cinzel" style={{ color: '#ffe88a' }}>Skill Points!</span>
           </div>
         )}
+
+        {/* Active buffs */}
+        {gameState._activeBuffs && Object.values(gameState._activeBuffs).length > 0 && (
+          <div className="mt-3 pt-2 border-t border-yellow-600/30 space-y-1">
+            <div className="text-xs font-cinzel" style={{ color: '#88ff88' }}>Active Buffs:</div>
+            {Object.values(gameState._activeBuffs).map((buff, i) => {
+              const pct = Math.max(0, (buff.duration / buff.maxDuration) * 100);
+              return (
+                <div key={i} className="flex items-center gap-1">
+                  <span className="text-xs font-cinzel" style={{ color: '#88ff88' }}>{buff.name}</span>
+                  <div className="flex-1 h-1.5 bg-gray-800 rounded overflow-hidden">
+                    <div className="h-full" style={{ width: `${pct}%`, background: '#88ff88' }} />
+                  </div>
+                  <span className="text-xs" style={{ color: '#5a7a3a' }}>{buff.duration.toFixed(1)}s</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Bottom center: Ability bar */}

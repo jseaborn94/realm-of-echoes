@@ -7,6 +7,8 @@
 
 import { calculateSkillDamage } from './SkillSystem.js';
 import { skillFX } from './SkillFX.js';
+import { combatFX } from './CombatFX.js';
+import { buffSystem } from './BuffSystem.js';
 
 export class SkillExecutor {
   constructor(gameEngine) {
@@ -51,6 +53,9 @@ export class SkillExecutor {
     const dmg = calculateSkillDamage(skill, playerStats);
     const range = skill.range || 50;
 
+    // Cast burst feedback
+    combatFX.createCastBurst(playerX, playerY, 'melee');
+
     // Damage enemies in cone toward target
     for (const enemy of this.engine.enemyManager.enemies) {
       if (enemy.dead) continue;
@@ -62,6 +67,16 @@ export class SkillExecutor {
       const hpBefore = enemy.hp;
       enemy.hp = Math.max(0, enemy.hp - dmg);
       enemy.hitFlash = 0.15;
+
+      // Apply knockback
+      const knockDir = Math.atan2(dy, dx);
+      const knockForce = 30;
+      enemy.knockbackX = Math.cos(knockDir) * knockForce;
+      enemy.knockbackY = Math.sin(knockDir) * knockForce;
+      enemy.knockbackDuration = 0.12;
+
+      // Impact visuals
+      combatFX.createMeleeImpact(enemy.x, enemy.y, 1.0);
 
       hits.push({
         enemy,
@@ -76,9 +91,6 @@ export class SkillExecutor {
         enemy.deathTimer = 0.6;
       }
     }
-
-    // Visual effect
-    skillFX.create(targetX, targetY, 'melee', skill.areaRadius || 25, 0.3, '#ff9999');
 
     return hits;
   }
@@ -96,6 +108,9 @@ export class SkillExecutor {
     const dist = Math.sqrt(dx * dx + dy * dy);
     const dirX = dx / dist, dirY = dy / dist;
 
+    // Create visible projectile
+    combatFX.createProjectile(playerX, playerY, targetX, targetY, 'magic', skill.projectileSpeed || 280);
+
     // Check enemies along the projectile path
     for (const enemy of this.engine.enemyManager.enemies) {
       if (enemy.dead) continue;
@@ -109,12 +124,20 @@ export class SkillExecutor {
 
       // Check if enemy is on the projectile line (within tolerance)
       const crossProduct = Math.abs(edx * dirY - edy * dirX);
-      if (crossProduct > 30) continue; // Tolerance for hit detection
+      if (crossProduct > 30) continue;
 
       // Hit!
       const hpBefore = enemy.hp;
       enemy.hp = Math.max(0, enemy.hp - dmg);
       enemy.hitFlash = 0.15;
+
+      // Knockback from projectile
+      enemy.knockbackX = dirX * 25;
+      enemy.knockbackY = dirY * 25;
+      enemy.knockbackDuration = 0.1;
+
+      // Impact visuals
+      combatFX.createProjectileImpact(enemy.x, enemy.y, 'magic');
 
       hits.push({
         enemy,
@@ -130,9 +153,6 @@ export class SkillExecutor {
       }
     }
 
-    // Visual effect along projectile path
-    skillFX.create(targetX, targetY, 'projectile', skill.areaRadius || 20, 0.4, '#ffcc00');
-
     return hits;
   }
 
@@ -143,6 +163,9 @@ export class SkillExecutor {
     const hits = [];
     const dmg = calculateSkillDamage(skill, playerStats);
     const radius = skill.areaRadius || 50;
+
+    // Cast burst at target
+    combatFX.createCastBurst(targetX, targetY, 'aoe');
 
     for (const enemy of this.engine.enemyManager.enemies) {
       if (enemy.dead) continue;
@@ -156,6 +179,12 @@ export class SkillExecutor {
       enemy.hp = Math.max(0, enemy.hp - dmg);
       enemy.hitFlash = 0.15;
 
+      // Radial knockback from center
+      const angle = Math.atan2(dy, dx);
+      enemy.knockbackX = Math.cos(angle) * 35;
+      enemy.knockbackY = Math.sin(angle) * 35;
+      enemy.knockbackDuration = 0.15;
+
       hits.push({
         enemy,
         x: enemy.x,
@@ -170,7 +199,7 @@ export class SkillExecutor {
       }
     }
 
-    // Visual effect at target
+    // Visual effect at target (sprite-based via skillFX)
     skillFX.create(targetX, targetY, 'aoe', radius, 0.5, '#ffaa44');
 
     return hits;
@@ -180,19 +209,44 @@ export class SkillExecutor {
    * Self buff: apply temporary stat boost to player
    */
   _executeSelfBuff(skill, playerStats) {
-    // Store buff state on gameEngine for UI display
-    if (this.engine.gameState) {
-      const buffs = this.engine.gameState._activeBuffs || {};
-      buffs[skill.id] = {
-        name: skill.name,
-        duration: skill.duration || 3.0,
-        maxDuration: skill.duration || 3.0,
-      };
-      this.engine.gameState._activeBuffs = buffs;
+    // Determine buff type and modifiers
+    let buffData = {
+      name: skill.name,
+      type: skill.id,
+      duration: skill.duration || 3.0,
+      statModifiers: {
+        attackSpeed: 0,
+        attackDamage: 0,
+        defense: 0,
+        speed: 0,
+      },
+      invulnerable: false,
+    };
+
+    // Inner Focus: +30% attack, +20% attack speed
+    if (skill.id === 'inner_focus') {
+      buffData.statModifiers.attackDamage = 0.30;
+      buffData.statModifiers.attackSpeed = 0.20;
+      buffData.statModifiers.speed = 0.15;
     }
 
-    // Visual effect on player
-    skillFX.create(this.engine.px, this.engine.py, 'buff', 40, 0.6, '#88ff88');
+    // Enlightenment: invulnerable
+    if (skill.id === 'enlightenment') {
+      buffData.invulnerable = true;
+      buffData.statModifiers.defense = 999; // effectively invuln
+    }
+
+    // Apply buff via buff system (affects real stats)
+    buffSystem.applyBuff(skill.id, buffData);
+
+    // Visual feedback
+    combatFX.createCastBurst(this.engine.px, this.engine.py, 'buff');
+    combatFX.createBuffAura(this.engine.px, this.engine.py, skill.id, buffData.duration);
+
+    // Store for UI tracking
+    if (this.engine.gameState) {
+      this.engine.gameState._activeBuffs = buffSystem.getVisibleBuffs();
+    }
 
     return [];
   }
@@ -216,13 +270,16 @@ export class SkillExecutor {
 
     // Clamp to world bounds
     const TILE_SIZE = 16;
-    const WORLD_WIDTH = 16 * 16 * 16; // stub—should import from constants
+    const WORLD_WIDTH = 16 * 16 * 16;
     const WORLD_HEIGHT = 32 * 16 * 16;
 
     if (this.engine) {
       this.engine.px = Math.max(TILE_SIZE, Math.min(WORLD_WIDTH - TILE_SIZE, newX));
       this.engine.py = Math.max(TILE_SIZE, Math.min(WORLD_HEIGHT - TILE_SIZE, newY));
     }
+
+    // Motion trail
+    combatFX.createDashTrail(playerX, playerY, newX, newY, 0.25);
 
     // Damage enemies along dash path
     for (const enemy of this.engine.enemyManager.enemies) {
@@ -231,11 +288,19 @@ export class SkillExecutor {
       // Check if enemy was in the dash path
       const edx = enemy.x - playerX, edy = enemy.y - playerY;
       const crossProduct = Math.abs(edx * dirY - edy * dirX);
-      if (crossProduct > 40) continue; // Tolerance
+      if (crossProduct > 40) continue;
 
       const hpBefore = enemy.hp;
       enemy.hp = Math.max(0, enemy.hp - dmg);
       enemy.hitFlash = 0.15;
+
+      // Knockback from dash
+      enemy.knockbackX = dirX * 50;
+      enemy.knockbackY = dirY * 50;
+      enemy.knockbackDuration = 0.2;
+
+      // Impact visuals
+      combatFX.createMeleeImpact(enemy.x, enemy.y, 1.2);
 
       hits.push({
         enemy,
@@ -251,8 +316,8 @@ export class SkillExecutor {
       }
     }
 
-    // Visual effect
-    skillFX.create(newX, newY, 'dash', 50, 0.4, '#4488ff');
+    // Impact burst at landing
+    combatFX.createCastBurst(newX, newY, 'projectile');
 
     return hits;
   }

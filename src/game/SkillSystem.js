@@ -298,6 +298,15 @@ export function calculateSkillDamage(skill, playerStats) {
 }
 
 /**
+ * Check if skill is unlocked at player level
+ */
+export function isSkillUnlocked(skill, playerLevel) {
+  if (!skill) return false;
+  const unlocksAt = skill.unlocksAt || 1;
+  return playerLevel >= unlocksAt;
+}
+
+/**
  * Validate if skill can be cast
  */
 export function canCastSkill(skill, playerState) {
