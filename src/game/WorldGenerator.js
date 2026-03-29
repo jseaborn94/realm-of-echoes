@@ -1,4 +1,5 @@
 import { TILE_SIZE, WORLD_COLS, WORLD_ROWS, getZoneAt } from './constants.js';
+import { NPCS } from './NPCDefinitions.js';
 
 // ─── Seeded deterministic RNG ───────────────────────────────────────────────
 function mulberry32(seed) {
