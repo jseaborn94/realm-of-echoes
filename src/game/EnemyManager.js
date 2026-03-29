@@ -697,61 +697,63 @@ export class EnemyManager {
   }
 
   _drawEnemy(ctx, e, camX, camY, playerSX, playerSY, fogRadiusWorld) {
-     const sx = e.x - camX;
-     const sy = e.y - camY;
-     if (sx < -60 || sx > ctx.canvas.width + 60 || sy < -60 || sy > ctx.canvas.height + 60) return;
+    const sx = e.x - camX;
+    const sy = e.y - camY;
+    if (sx < -60 || sx > ctx.canvas.width + 60 || sy < -60 || sy > ctx.canvas.height + 60) return;
 
-     const distFromPlayer = fogRadiusWorld != null && playerSX != null
-       ? Math.sqrt((sx - playerSX) ** 2 + (sy - playerSY) ** 2) : 0;
-     const labelAlpha = fogRadiusWorld != null
-       ? Math.max(0, Math.min(1, 1 - (distFromPlayer - fogRadiusWorld * 0.7) / (fogRadiusWorld * 0.3))) : 1;
+    const distFromPlayer = fogRadiusWorld != null && playerSX != null
+      ? Math.sqrt((sx - playerSX) ** 2 + (sy - playerSY) ** 2) : 0;
+    const labelAlpha = fogRadiusWorld != null
+      ? Math.max(0, Math.min(1, 1 - (distFromPlayer - fogRadiusWorld * 0.7) / (fogRadiusWorld * 0.3))) : 1;
 
-     const isBoss     = e.tier === 'boss';
-     const isMiniboss = e.tier === 'miniboss';
-     const isElite    = e.tier === 'elite';
-     const scale = isBoss ? 2.2 : isMiniboss ? 1.8 : isElite ? 1.4 : 1.0;
-     const r = 12 * scale;
+    const isBoss     = e.tier === 'boss';
+    const isMiniboss = e.tier === 'miniboss';
+    const isElite    = e.tier === 'elite';
+    const scale = isBoss ? 2.2 : isMiniboss ? 1.8 : isElite ? 1.4 : 1.0;
+    const r = 12 * scale;
 
-     ctx.save();
-     // Death fade-out effect
-     if (e.deathTimer !== null) {
-       const fadeAlpha = e.deathTimer / 0.6; // 0.6s fade duration
-       ctx.globalAlpha = Math.min(1, fadeAlpha) * 0.5; // fade to semi-transparent
-     }
-     if (e.hitFlash > 0) ctx.globalAlpha = (ctx.globalAlpha || 1) * 0.85;
+    ctx.save();
+    // Death fade-out effect
+    if (e.deathTimer !== null) {
+      const fadeAlpha = e.deathTimer / 0.6;
+      ctx.globalAlpha = Math.min(1, fadeAlpha) * 0.5;
+    }
+    if (e.hitFlash > 0) ctx.globalAlpha = (ctx.globalAlpha || 1) * 0.85;
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.beginPath();
-    ctx.ellipse(sx, sy + r + 4, r * 0.9, r * 0.35, 0, 0, Math.PI * 2);
+    ctx.ellipse(sx, sy + r + 4, r * 1.0, r * 0.4, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // Aura for special tiers
     if (isElite || isMiniboss || isBoss) {
       const glowColor = isBoss ? '#ff9800' : isMiniboss ? '#e040fb' : e.color;
-      const grd = ctx.createRadialGradient(sx, sy, 0, sx, sy, r * 2.2);
+      const grd = ctx.createRadialGradient(sx, sy, 0, sx, sy, r * 2.4);
       grd.addColorStop(0, glowColor + '66');
       grd.addColorStop(1, 'transparent');
       ctx.fillStyle = grd;
       ctx.beginPath();
-      ctx.arc(sx, sy, r * 2.2, 0, Math.PI * 2);
+      ctx.arc(sx, sy, r * 2.4, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    ctx.fillStyle = e.hitFlash > 0 ? '#ffffff' : e.color;
-    ctx.beginPath();
-    ctx.arc(sx, sy, r, 0, Math.PI * 2);
-    ctx.fill();
+    // Draw enemy sprite from registry (async, but don't await in draw loop)
+    const { assetIntegration } = require('./AssetIntegration.js');
+    const enemyType = e.type || 'goblin';
+    const action = e.moving ? 'run' : e.attacking ? 'attack' : 'idle';
+    assetIntegration.drawEnemySprite(ctx, enemyType, sx, sy, action, e.facingLeft ? -1 : 1).catch(() => {
+      // Fallback: draw circle placeholder
+      ctx.fillStyle = e.hitFlash > 0 ? '#ffffff' : e.color;
+      ctx.beginPath();
+      ctx.arc(sx, sy, r, 0, Math.PI * 2);
+      ctx.fill();
+    });
 
     const borderColor = isBoss ? '#ff9800' : isMiniboss ? '#e040fb' : isElite ? '#ffd700' : 'rgba(0,0,0,0.4)';
     ctx.strokeStyle = borderColor;
     ctx.lineWidth = isBoss ? 4 : isMiniboss ? 3 : isElite ? 2 : 1;
     ctx.stroke();
-
-    ctx.font = `${isBoss ? 22 : isMiniboss ? 18 : isElite ? 16 : 13}px serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(e.icon, sx, sy);
 
     if (labelAlpha > 0) {
       ctx.save();

@@ -7,6 +7,7 @@ import { WorldGenerator, TILE_COLORS, TILE, OBJ } from './WorldGenerator.js';
 import { EnemyManager } from './EnemyManager.js';
 import { GatheringSystem, addResourcesToInventory } from './GatheringSystem.js';
 import { TargetingSystem } from './TargetingSystem.js'; // v2
+import { assetIntegration } from './AssetIntegration.js';
 
 export class GameEngine {
   constructor(canvas, gameState, onStateUpdate) {
@@ -909,92 +910,64 @@ export class GameEngine {
 
   _drawObject(ctx, type, cx, cy, col, row) {
     ctx.save();
+    
+    // Map object types to terrain sprite categories
+    const spriteMap = {
+      [OBJ.TREE]: { category: 'trees', type: 'tree1' },
+      [OBJ.PINE]: { category: 'trees', type: 'tree2' },
+      [OBJ.ROCK]: { category: 'rocks', type: 'rock1' },
+      [OBJ.BOULDER]: { category: 'rocks', type: 'rock2' },
+      [OBJ.RUIN]: { category: 'ruins', type: 'ruin1' },
+      [OBJ.CRYSTAL]: { category: 'crystals', type: 'crystal1' },
+      [OBJ.CHEST]: { category: 'chest', type: 'chest' }
+    };
+
+    const spriteInfo = spriteMap[type];
+    if (spriteInfo && assetIntegration) {
+      // Try to draw sprite from registry
+      assetIntegration.drawTerrainSprite(ctx, spriteInfo.category, spriteInfo.type, cx, cy).catch(() => {
+        // Fallback to placeholder shapes if sprite fails
+        this._drawObjectFallback(ctx, type, cx, cy, col, row);
+      });
+    } else {
+      // No sprite mapping - use fallback
+      this._drawObjectFallback(ctx, type, cx, cy, col, row);
+    }
+
+    ctx.restore();
+  }
+
+  _drawObjectFallback(ctx, type, cx, cy, col, row) {
+    // Placeholder shapes for objects without sprites
     switch (type) {
       case OBJ.TREE:
-        // Trunk
-        ctx.fillStyle = '#5c3a1e';
-        ctx.fillRect(cx - 3, cy, 6, 12);
-        // Canopy
         ctx.fillStyle = '#1a5c0a';
         ctx.beginPath();
-        ctx.arc(cx, cy - 6, 13, 0, Math.PI * 2);
+        ctx.arc(cx, cy - 6, 12, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = '#267315';
-        ctx.beginPath();
-        ctx.arc(cx - 3, cy - 9, 8, 0, Math.PI * 2);
-        ctx.fill();
-        break;
-      case OBJ.PINE:
         ctx.fillStyle = '#5c3a1e';
-        ctx.fillRect(cx - 2, cy + 2, 5, 10);
-        ctx.fillStyle = '#0d4a1e';
-        for (let i = 0; i < 3; i++) {
-          const s = 12 - i * 3;
-          ctx.beginPath();
-          ctx.moveTo(cx, cy - 14 + i * 4);
-          ctx.lineTo(cx - s, cy - 4 + i * 4);
-          ctx.lineTo(cx + s, cy - 4 + i * 4);
-          ctx.closePath();
-          ctx.fill();
-        }
+        ctx.fillRect(cx - 2, cy + 2, 4, 8);
         break;
       case OBJ.ROCK:
         ctx.fillStyle = '#555';
         ctx.beginPath();
         ctx.ellipse(cx, cy, 9, 7, 0.3, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = '#777';
-        ctx.beginPath();
-        ctx.ellipse(cx - 2, cy - 2, 5, 4, 0.3, 0, Math.PI * 2);
-        ctx.fill();
-        break;
-      case OBJ.BOULDER:
-        ctx.fillStyle = '#444';
-        ctx.beginPath();
-        ctx.ellipse(cx, cy, 13, 10, 0.2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#666';
-        ctx.beginPath();
-        ctx.ellipse(cx - 3, cy - 3, 7, 5, 0.2, 0, Math.PI * 2);
-        ctx.fill();
-        break;
-      case OBJ.RUIN:
-        ctx.fillStyle = '#3a2a1a';
-        ctx.fillRect(cx - 10, cy - 4, 8, 12);
-        ctx.fillRect(cx + 2, cy - 8, 8, 10);
-        ctx.fillStyle = '#2a1a0a';
-        ctx.fillRect(cx - 8, cy + 6, 18, 4);
-        break;
-      case OBJ.CRYSTAL:
-        ctx.fillStyle = 'rgba(130,60,200,0.8)';
-        ctx.beginPath();
-        ctx.moveTo(cx, cy - 14);
-        ctx.lineTo(cx - 5, cy);
-        ctx.lineTo(cx, cy + 6);
-        ctx.lineTo(cx + 5, cy);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = 'rgba(180,100,255,0.5)';
-        ctx.beginPath();
-        ctx.moveTo(cx, cy - 14);
-        ctx.lineTo(cx - 2, cy);
-        ctx.lineTo(cx, cy - 4);
-        ctx.closePath();
-        ctx.fill();
         break;
       case OBJ.CHEST:
         const chest = this.world.chests.find(c => c.col === col && c.row === row);
         ctx.fillStyle = chest?.looted ? '#444' : '#8b6914';
-        ctx.fillRect(cx - 9, cy - 5, 18, 13);
-        ctx.fillStyle = chest?.looted ? '#333' : '#5c440a';
-        ctx.fillRect(cx - 9, cy - 5, 18, 4);
+        ctx.fillRect(cx - 8, cy - 4, 16, 12);
         if (!chest?.looted) {
           ctx.fillStyle = '#ffd700';
-          ctx.fillRect(cx - 2, cy - 2, 4, 4);
+          ctx.fillRect(cx - 2, cy - 1, 4, 4);
         }
         break;
+      default:
+        ctx.fillStyle = 'rgba(100,100,100,0.5)';
+        ctx.fillRect(cx - 6, cy - 6, 12, 12);
+        break;
     }
-    ctx.restore();
   }
 
   _drawNPCs(ctx, wcamX, wcamY, playerSX, playerSY) {
@@ -1034,77 +1007,46 @@ export class GameEngine {
     }
   }
 
-  _drawPlayer(ctx, W, H, wcamX, wcamY) {
+  async _drawPlayer(ctx, W, H, wcamX, wcamY) {
     const gs = this.gameState;
     const px = W / 2;
     const py = H / 2;
     const tier = getLevelTierColor(gs.level);
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.beginPath();
-    ctx.ellipse(px, py + 14, 12, 5, 0, 0, Math.PI * 2);
+    ctx.ellipse(px, py + 16, 14, 6, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Glow
-    const grd = ctx.createRadialGradient(px, py, 0, px, py, 28);
-    grd.addColorStop(0, tier.glow);
-    grd.addColorStop(1, 'transparent');
-    ctx.fillStyle = grd;
-    ctx.beginPath();
-    ctx.arc(px, py, 28, 0, Math.PI * 2);
-    ctx.fill();
+    // Draw player sprite from asset registry
+    const classId = gs.classData?.id || 'warrior';
+    const color = gs.classData?.spriteColor || 'blue'; // Add spriteColor to classData
+    const action = this.destination ? 'run' : 'idle';
 
-    // Body (class-colored)
-    const classColor = gs.classData?.color || '#888';
-    ctx.fillStyle = classColor;
-    ctx.fillRect(px - 8, py - 4, 16, 18);
-
-    // Head
-    ctx.fillStyle = '#d4a070';
-    ctx.beginPath();
-    ctx.arc(px, py - 10, 9, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Outline with tier color
-    ctx.strokeStyle = tier.color;
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.arc(px, py - 10, 9, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeRect(px - 8, py - 4, 16, 18);
-
-    // Facing direction indicator
-    const faceX = px + Math.cos(this.facingAngle) * 16;
-    const faceY = py + Math.sin(this.facingAngle) * 16;
-    ctx.strokeStyle = tier.color;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(px, py);
-    ctx.lineTo(faceX, faceY);
-    ctx.stroke();
-
-    // Weapon indicator
-    const icon = gs.classData?.icon || '⚔️';
-    ctx.font = '14px serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(icon, faceX, faceY);
+    try {
+      await assetIntegration.drawPlayerSprite(ctx, classId, px, py, color, action);
+    } catch (err) {
+      console.warn('[RENDER] Player sprite failed, using fallback');
+      // Fallback: draw simple placeholder
+      ctx.fillStyle = gs.classData?.color || '#888';
+      ctx.fillRect(px - 10, py - 20, 20, 28);
+    }
 
     // Nameplate
     ctx.font = 'bold 11px Cinzel, serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = tier.color;
-    ctx.fillText(gs.playerName || 'Hero', px, py - 26);
+    ctx.fillText(gs.playerName || 'Hero', px, py - 32);
 
     // Level badge
     ctx.font = 'bold 9px Cinzel, serif';
-    ctx.fillStyle = '#1a1a1a';
-    ctx.beginPath();
-    ctx.arc(px + 12, py - 24, 8, 0, Math.PI * 2);
     ctx.fillStyle = tier.color;
+    ctx.beginPath();
+    ctx.arc(px + 14, py - 28, 8, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#000';
-    ctx.fillText(gs.level, px + 12, py - 21);
+    ctx.fillText(gs.level, px + 14, py - 25);
   }
 
   _drawEffects(ctx, wcamX, wcamY) {
