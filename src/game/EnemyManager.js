@@ -330,7 +330,8 @@ export class EnemyManager {
       projectiles: (def.tier === 'ranged' || (def.tier === 'miniboss' && def.projectileColor)) ? [] : undefined,
       projectileColor: def.projectileColor,
       hitFlash: 0,
-      dead: false,
+       dead: false,
+       deathTimer: null,
     });
   }
 
@@ -382,11 +383,19 @@ export class EnemyManager {
     });
 
     const dead = [];
-    const lootDrops = [];
-    let playerDmgTotal = 0;
+     const lootDrops = [];
+     let playerDmgTotal = 0;
 
-    for (const e of this.enemies) {
-      if (e.dead) continue;
+     for (const e of this.enemies) {
+       // Update death fade timer
+       if (e.deathTimer !== null) {
+         e.deathTimer -= dt;
+         if (e.deathTimer <= 0) {
+           dead.push(e);
+         }
+         continue; // Don't update already-dead enemies
+       }
+       if (e.dead) continue;
 
       if (e.attackCooldown > 0) e.attackCooldown -= dt;
       if (e.chargeCooldown  > 0) e.chargeCooldown  -= dt;
@@ -412,15 +421,53 @@ export class EnemyManager {
         });
       }
 
-      // ── Alert / state transitions ──
-      const wasIdle = e.state === 'idle';
-      if (dist < e.alertRadius && e.state === 'idle') {
-        e.state = 'chase';
-        // Bring camp allies into the fight
-        this._triggerCampAggro(e, px, py);
-      } else if (e.state === 'chase' && dist > e.alertRadius + 120) {
-        // Enemy lost player — return home if no camp members are still fighting
-        e.state = 'idle';
+      // ── Idle patrol: random wander when not in combat ──
+        if (e.state === 'idle') {
+          if (!e.patrolTimer) {
+            e.patrolTimer = 3 + Math.random() * 4; // patrol for 3-7 seconds
+            e.patrolTarget = { x: e.homeX + (Math.random() - 0.5) * 120, y: e.homeY + (Math.random() - 0.5) * 120 };
+          }
+          e.patrolTimer -= dt;
+
+          // Wander toward patrol target slowly
+          const pdx = e.patrolTarget.x - e.x, pdy = e.patrolTarget.y - e.y;
+          const pdist = Math.sqrt(pdx * pdx + pdy * pdy);
+          if (pdist > 8) {
+            const idleSpeed = e.speed * 0.4; // patrol at 40% normal speed
+            const nx = e.x + (pdx / pdist) * idleSpeed * dt;
+            const ny = e.y + (pdy / pdist) * idleSpeed * dt;
+            if (!this._blocked(nx, ny)) { e.x = nx; e.y = ny; }
+          }
+        }
+
+        // ── Alert / state transitions ──
+        if (dist < e.alertRadius && e.state === 'idle') {
+          e.state = 'chase';
+          e.patrolTimer = 0; // stop patrol
+          // Bring camp allies into the fight
+          this._triggerCampAggro(e, px, py);
+        } else if (e.state === 'chase' && dist > e.alertRadius + 120) {
+          // Enemy lost player — return home
+          e.state = 'idle';
+          e.patrolTimer = 0;
+        }
+
+      // ── Leash system: if too far from home, return ──
+      const homeX = e.homeX, homeY = e.homeY;
+      const homeDist = Math.sqrt((e.x - homeX) ** 2 + (e.y - homeY) ** 2);
+      const LEASH_RANGE = 400; // world pixels — enemies return if player runs too far
+      if (e.state !== 'idle' && homeDist > LEASH_RANGE) {
+        // Return toward home
+        const hdx = homeX - e.x, hdy = homeY - e.y;
+        const hlen = Math.sqrt(hdx * hdx + hdy * hdy);
+        if (hlen > 8) {
+          const nx = e.x + (hdx / hlen) * e.speed * dt;
+          const ny = e.y + (hdy / hlen) * e.speed * dt;
+          if (!this._blocked(nx, ny)) { e.x = nx; e.y = ny; }
+        } else {
+          e.state = 'idle'; // Returned home
+        }
+        return; // Skip normal combat logic
       }
 
       // ── AI per state ──
@@ -496,19 +543,25 @@ export class EnemyManager {
 
         } else {
           // ── Melee AI: charge toward player, attack in range ──
-          // Always chase if player is outside attack range
-          if (dist > e.range) {
-            const spd = isElite ? e.speed * 1.1 : e.speed; // elites slightly faster when closing
-            const nx = e.x + (dx / dist) * spd * dt;
-            const ny = e.y + (dy / dist) * spd * dt;
+          // Use stopRange (similar to player) to prevent overlapping: stop at ~90% of attack range
+          const stopRange = Math.max(e.range * 0.9, 28);
+          
+          if (dist > stopRange) {
+            // Chase toward player
+            const spd = isElite ? e.speed * 1.1 : e.speed;
+            const moveStep = spd * dt;
+            // Limit step to avoid overshooting
+            const limitedStep = Math.min(moveStep, Math.max(0, dist - stopRange * 0.95));
+            const nx = e.x + (dx / dist) * limitedStep;
+            const ny = e.y + (dy / dist) * limitedStep;
             if (!this._blocked(nx, ny)) {
               e.x = nx; e.y = ny;
             } else {
               // Slide along axes if blocked
-              const nx2 = e.x + (dx / dist) * spd * dt;
+              const nx2 = e.x + (dx / dist) * limitedStep;
               if (!this._blocked(nx2, e.y)) e.x = nx2;
               else {
-                const ny2 = e.y + (dy / dist) * spd * dt;
+                const ny2 = e.y + (dy / dist) * limitedStep;
                 if (!this._blocked(e.x, ny2)) e.y = ny2;
               }
             }
@@ -535,12 +588,15 @@ export class EnemyManager {
     for (const e of this.enemies) {
       if (e.dead) {
         dead.push(e);
+        // Drop loot
         const loot = rollLoot(e.type, playerLevel, playerClassId);
         if (loot) lootDrops.push(loot);
         if (e.tier === 'miniboss') {
           const bonus = rollLoot(e.type, playerLevel, playerClassId);
           if (bonus) lootDrops.push(bonus);
         }
+        // Death burst effect
+        pushEffect(e.x, e.y, 28, 0.4, e.color);
       }
     }
     this.enemies = this.enemies.filter(e => !e.dead);
@@ -612,7 +668,10 @@ export class EnemyManager {
       // Skills hitting an enemy also trigger camp aggro
       if (e.state === 'idle') { e.state = 'chase'; this._triggerCampAggro(e, px, py); }
       results.push({ x: e.x, y: e.y, dmg, killed: e.hp <= 0 });
-      if (e.hp <= 0) e.dead = true;
+       if (e.hp <= 0) {
+         e.dead = true;
+         e.deathTimer = 0.6; // 0.6s fade-out before removal
+       }
     }
     return results;
   }
@@ -638,23 +697,28 @@ export class EnemyManager {
   }
 
   _drawEnemy(ctx, e, camX, camY, playerSX, playerSY, fogRadiusWorld) {
-    const sx = e.x - camX;
-    const sy = e.y - camY;
-    if (sx < -60 || sx > ctx.canvas.width + 60 || sy < -60 || sy > ctx.canvas.height + 60) return;
+     const sx = e.x - camX;
+     const sy = e.y - camY;
+     if (sx < -60 || sx > ctx.canvas.width + 60 || sy < -60 || sy > ctx.canvas.height + 60) return;
 
-    const distFromPlayer = fogRadiusWorld != null && playerSX != null
-      ? Math.sqrt((sx - playerSX) ** 2 + (sy - playerSY) ** 2) : 0;
-    const labelAlpha = fogRadiusWorld != null
-      ? Math.max(0, Math.min(1, 1 - (distFromPlayer - fogRadiusWorld * 0.7) / (fogRadiusWorld * 0.3))) : 1;
+     const distFromPlayer = fogRadiusWorld != null && playerSX != null
+       ? Math.sqrt((sx - playerSX) ** 2 + (sy - playerSY) ** 2) : 0;
+     const labelAlpha = fogRadiusWorld != null
+       ? Math.max(0, Math.min(1, 1 - (distFromPlayer - fogRadiusWorld * 0.7) / (fogRadiusWorld * 0.3))) : 1;
 
-    const isBoss     = e.tier === 'boss';
-    const isMiniboss = e.tier === 'miniboss';
-    const isElite    = e.tier === 'elite';
-    const scale = isBoss ? 2.2 : isMiniboss ? 1.8 : isElite ? 1.4 : 1.0;
-    const r = 12 * scale;
+     const isBoss     = e.tier === 'boss';
+     const isMiniboss = e.tier === 'miniboss';
+     const isElite    = e.tier === 'elite';
+     const scale = isBoss ? 2.2 : isMiniboss ? 1.8 : isElite ? 1.4 : 1.0;
+     const r = 12 * scale;
 
-    ctx.save();
-    if (e.hitFlash > 0) ctx.globalAlpha = 0.85;
+     ctx.save();
+     // Death fade-out effect
+     if (e.deathTimer !== null) {
+       const fadeAlpha = e.deathTimer / 0.6; // 0.6s fade duration
+       ctx.globalAlpha = Math.min(1, fadeAlpha) * 0.5; // fade to semi-transparent
+     }
+     if (e.hitFlash > 0) ctx.globalAlpha = (ctx.globalAlpha || 1) * 0.85;
 
     // Shadow
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
