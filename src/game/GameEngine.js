@@ -1027,11 +1027,43 @@ export class GameEngine {
     ctx.textAlign = 'center';
     ctx.fillText(icon, faceX, faceY);
 
+    // Above-character HP / MP bars
+    const barW = 52;
+    const barH = 6;
+    const mpBarH = 4;
+    const barX = px - barW / 2;
+    const hpBarY = py - 54;
+    const mpBarY = hpBarY + barH + 3;
+
+    // HP bar background
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.beginPath();
+    ctx.roundRect(barX - 1, hpBarY - 1, barW + 2, barH + 2, 3);
+    ctx.fill();
+    // HP bar fill
+    const hpPct = Math.max(0, Math.min(1, gs.hp / gs.maxHp));
+    ctx.fillStyle = hpPct > 0.5 ? '#22c55e' : hpPct > 0.25 ? '#f59e0b' : '#ef4444';
+    ctx.beginPath();
+    ctx.roundRect(barX, hpBarY, barW * hpPct, barH, 2);
+    ctx.fill();
+
+    // MP bar background
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.beginPath();
+    ctx.roundRect(barX - 1, mpBarY - 1, barW + 2, mpBarH + 2, 3);
+    ctx.fill();
+    // MP bar fill
+    const mpPct = Math.max(0, Math.min(1, gs.mp / gs.maxMp));
+    ctx.fillStyle = '#3b82f6';
+    ctx.beginPath();
+    ctx.roundRect(barX, mpBarY, barW * mpPct, mpBarH, 2);
+    ctx.fill();
+
     // Nameplate
     ctx.font = 'bold 11px Cinzel, serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = tier.color;
-    ctx.fillText(gs.playerName || 'Hero', px, py - 26);
+    ctx.fillText(gs.playerName || 'Hero', px, py - 66);
 
     // Level badge
     ctx.font = 'bold 9px Cinzel, serif';
