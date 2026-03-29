@@ -1,5 +1,6 @@
 import { TILE_SIZE, WORLD_COLS, WORLD_ROWS } from './constants.js';
 import { TILE } from './WorldGenerator.js';
+import { assetIntegration } from './AssetIntegration.js';
 
 // Resource node types
 export const NODE_TYPE = {
@@ -174,7 +175,7 @@ export class GatheringSystem {
     return completed;
   }
 
-  // Draw resource nodes on canvas
+  // Draw resource nodes on canvas using sprite assets
   draw(ctx, camX, camY) {
     for (const node of this.nodes) {
       if (!node.active) continue;
@@ -182,30 +183,40 @@ export class GatheringSystem {
       const sy = node.y - camY;
       if (sx < -40 || sx > ctx.canvas.width + 40 || sy < -40 || sy > ctx.canvas.height + 40) continue;
 
-      if (node.type === NODE_TYPE.SHEEP) {
-        this._drawSheep(ctx, node, sx, sy);
+      // Draw sprite-based node visuals
+      if (node.type === NODE_TYPE.TREE) {
+        assetIntegration.drawTerrainSprite(ctx, 'trees', 'tree1', sx, sy).catch(() => {
+          this._drawFallback(ctx, node, sx, sy);
+        });
+      } else if (node.type === NODE_TYPE.ROCK) {
+        assetIntegration.drawTerrainSprite(ctx, 'rocks', 'rock1', sx, sy).catch(() => {
+          this._drawFallback(ctx, node, sx, sy);
+        });
+      } else if (node.type === NODE_TYPE.SHEEP) {
+        assetIntegration.drawEnemySprite(ctx, 'panda', sx, sy, 'idle').catch(() => {
+          this._drawFallback(ctx, node, sx, sy);
+        });
       }
 
-      // Draw harvest progress bar above node when active
+      // Draw harvest progress bar
       if (node.harvesting) {
         const pct = node.harvestProgress / node.harvestDuration;
         const bw = 36;
         const bx = sx - bw / 2;
-        const by = sy - (node.type === NODE_TYPE.SHEEP ? 28 : 36);
+        const by = sy - 32;
         ctx.fillStyle = 'rgba(0,0,0,0.7)';
         ctx.fillRect(bx, by, bw, 5);
         ctx.fillStyle = '#4caf50';
         ctx.fillRect(bx, by, bw * pct, 5);
-        // "Gathering..." label
         ctx.save();
         ctx.font = '9px Cinzel, serif';
         ctx.fillStyle = '#ffe88a';
         ctx.textAlign = 'center';
-        ctx.fillText('⚒ Gathering...', sx, by - 4);
+        ctx.fillText('Gathering...', sx, by - 4);
         ctx.restore();
       }
 
-      // Interaction highlight glow for trees/rocks
+      // Interaction highlight for nodes
       if (node.type !== NODE_TYPE.SHEEP) {
         ctx.save();
         ctx.strokeStyle = 'rgba(255,232,138,0.6)';
@@ -220,32 +231,24 @@ export class GatheringSystem {
     }
   }
 
-  _drawSheep(ctx, node, sx, sy) {
-    ctx.save();
-    // Body
-    ctx.fillStyle = '#e8e4dc';
-    ctx.beginPath();
-    ctx.ellipse(sx, sy, 13, 9, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#c8c4bc';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    // Head
-    ctx.fillStyle = '#d0ccc4';
-    ctx.beginPath();
-    ctx.arc(sx + 10, sy - 3, 6, 0, Math.PI * 2);
-    ctx.fill();
-    // Legs
-    ctx.fillStyle = '#a89880';
-    for (const [lx, ly] of [[-6, 8], [-2, 8], [4, 8], [8, 8]]) {
-      ctx.fillRect(sx + lx - 1, sy + ly, 2, 6);
+  _drawFallback(ctx, node, sx, sy) {
+    // Minimal fallback placeholder
+    if (node.type === NODE_TYPE.TREE) {
+      ctx.fillStyle = '#1a5c0a';
+      ctx.beginPath();
+      ctx.arc(sx, sy - 6, 10, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (node.type === NODE_TYPE.ROCK) {
+      ctx.fillStyle = '#555';
+      ctx.beginPath();
+      ctx.ellipse(sx, sy, 8, 6, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (node.type === NODE_TYPE.SHEEP) {
+      ctx.fillStyle = '#e8e4dc';
+      ctx.beginPath();
+      ctx.arc(sx, sy, 10, 0, Math.PI * 2);
+      ctx.fill();
     }
-    // Name
-    ctx.font = '8px Cinzel, serif';
-    ctx.fillStyle = '#e8d8b0';
-    ctx.textAlign = 'center';
-    ctx.fillText('🐑 Sheep', sx, sy - 18);
-    ctx.restore();
   }
 }
 

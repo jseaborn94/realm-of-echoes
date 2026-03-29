@@ -1,5 +1,6 @@
 import { TILE_SIZE, WORLD_COLS, WORLD_ROWS, getZoneAt } from './constants.js';
 import { TILE } from './WorldGenerator.js';
+import { assetIntegration } from './AssetIntegration.js';
 
 // ─── Enemy Definitions ───────────────────────────────────────────────────────
 export const ENEMY_TYPES = {
@@ -684,14 +685,19 @@ export class EnemyManager {
       if (!e.projectiles) continue;
       for (const p of e.projectiles) {
         const sx = p.x - camX, sy = p.y - camY;
-        ctx.save();
-        ctx.fillStyle   = p.color || '#ff0';
-        ctx.shadowColor = p.color || '#ff0';
-        ctx.shadowBlur  = 8;
-        ctx.beginPath();
-        ctx.arc(sx, sy, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
+        // Draw projectile using fire effect sprite (direction-rotated)
+        const angle = Math.atan2(p.vy || 0, p.vx || 1);
+        assetIntegration.drawProjectile(ctx, sx, sy, angle, 'fire').catch(() => {
+          // Fallback: simple glow circle
+          ctx.save();
+          ctx.fillStyle = p.color || '#ff0';
+          ctx.shadowColor = p.color || '#ff0';
+          ctx.shadowBlur = 8;
+          ctx.beginPath();
+          ctx.arc(sx, sy, 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        });
       }
     }
   }

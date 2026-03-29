@@ -8,6 +8,7 @@ import { EnemyManager } from './EnemyManager.js';
 import { GatheringSystem, addResourcesToInventory } from './GatheringSystem.js';
 import { TargetingSystem } from './TargetingSystem.js'; // v2
 import { assetIntegration } from './AssetIntegration.js';
+import { skillFX } from './SkillFX.js';
 
 export class GameEngine {
   constructor(canvas, gameState, onStateUpdate) {
@@ -348,11 +349,17 @@ export class GameEngine {
       gs.mp = Math.max(0, Math.min(gs.maxMp, gs.mp + 5 * dt));
     }
 
-    // Effects
+    // Effects - use sprite-based rendering
     this.effects = this.effects.filter(e => {
       e.life -= dt;
+      if (e.life <= 0) {
+        assetIntegration.removeAnimation(e.id || `effect_${Math.random()}`);
+      }
       return e.life > 0;
     });
+
+    // Update skill FX zones
+    skillFX.update(dt);
     this.damageNumbers = this.damageNumbers.filter(d => {
       d.life -= dt;
       return d.life > 0;
@@ -601,14 +608,15 @@ export class GameEngine {
         }
       }
 
-      // Visual effect at the targeted position — always fires so cast feels responsive
-      this.effects.push({
-        x: targetX,
-        y: targetY,
-        radius: ability.type === 'aoe' || ability.type === 'ultimate' ? 60 : 25,
-        life: 0.5, maxLife: 0.5,
-        color: gs.classData?.color || '#ffffff',
-      });
+      // Visual effect at the targeted position — use skill FX
+      skillFX.create(
+        targetX,
+        targetY,
+        ability.type,
+        ability.type === 'aoe' || ability.type === 'ultimate' ? 60 : 25,
+        0.5,
+        gs.classData?.color || '#ffffff'
+      );
     } else {
       this.damageNumbers.push({ x: this.px, y: this.py - 30, text: ability.name + '!', color: '#4caf50', life: 1.0 });
     }
@@ -672,14 +680,15 @@ export class GameEngine {
           this.damageNumbers.push({ x: hit.x, y: hit.y - 30, text: 'SLAIN!', color: '#ffe74a', life: 1.5, big: false });
         }
       }
-      // Also show the directional effect like before
-      this.effects.push({
-        x: this.px + Math.cos(Math.random() * Math.PI * 2) * (ability.type === 'aoe' ? 100 : 70),
-        y: this.py + Math.sin(Math.random() * Math.PI * 2) * (ability.type === 'aoe' ? 100 : 70),
-        radius: ability.type === 'aoe' ? 50 : 25,
-        life: 0.5, maxLife: 0.5,
-        color: gs.classData?.color || '#ffffff',
-      });
+      // Also show the directional effect using skill FX
+      skillFX.create(
+        this.px + Math.cos(Math.random() * Math.PI * 2) * (ability.type === 'aoe' ? 100 : 70),
+        this.py + Math.sin(Math.random() * Math.PI * 2) * (ability.type === 'aoe' ? 100 : 70),
+        ability.type,
+        ability.type === 'aoe' ? 50 : 25,
+        0.5,
+        gs.classData?.color || '#ffffff'
+      );
     }
 
     if (ability.type === 'utility') {
@@ -830,8 +839,9 @@ export class GameEngine {
     // Draw gathering nodes (ctx is already scaled by z, pass world-space cam)
     this.gatheringSystem.draw(ctx, wcamX, wcamY);
 
-    // Draw effects
+    // Draw effects and skill FX
     this._drawEffects(ctx, wcamX, wcamY);
+    skillFX.draw(ctx, wcamX, wcamY, z);
 
     // Draw targeting preview (world-space, before player so player renders on top)
     if (this.targeting.active && this.targeting.config?.type !== 'self_aoe') {
@@ -971,25 +981,26 @@ export class GameEngine {
   }
 
   _drawNPCs(ctx, wcamX, wcamY, playerSX, playerSY) {
-    // fogRadiusWorld = fog screen radius converted back to world-space for distance check
     const fogRadiusWorld = FOG_RADIUS / this.zoom;
     for (const npc of this.world.npcs) {
       const sx = npc.col * TILE_SIZE - wcamX + TILE_SIZE / 2;
       const sy = npc.row * TILE_SIZE - wcamY + TILE_SIZE / 2;
 
-      // Distance from player in world-space (ctx is scaled so sx/sy are world-space coords)
       const distFromPlayer = Math.sqrt((sx - playerSX) ** 2 + (sy - playerSY) ** 2);
-      const inVision = distFromPlayer < fogRadiusWorld;
-      // Smooth fade based on distance (1=fully visible, 0=hidden)
       const visAlpha = Math.max(0, Math.min(1, 1 - (distFromPlayer - fogRadiusWorld * 0.7) / (fogRadiusWorld * 0.3)));
 
-      // Body — always drawn (fog covers it visually)
-      ctx.fillStyle = '#c8a060';
-      ctx.beginPath();
-      ctx.arc(sx, sy - 4, 9, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#6a3a1a';
-      ctx.fillRect(sx - 8, sy + 4, 16, 14);
+      // Draw NPC as sprite (use unit sprite with idle animation)
+      const npcClass = npc.role === 'merchant' ? 'archer' : 'warrior'; // diverse NPC types
+      const npcColor = npc.color || 'black';
+      assetIntegration.drawPlayerSprite(ctx, npcClass, sx, sy, npcColor, 'idle').catch(() => {
+        // Fallback: simple humanoid placeholder
+        ctx.fillStyle = '#c8a060';
+        ctx.beginPath();
+        ctx.arc(sx, sy - 4, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#6a3a1a';
+        ctx.fillRect(sx - 6, sy + 2, 12, 10);
+      });
 
       // Labels — only when inside vision
       if (visAlpha > 0) {
@@ -998,10 +1009,7 @@ export class GameEngine {
         ctx.font = 'bold 10px Cinzel, serif';
         ctx.fillStyle = '#ffe88a';
         ctx.textAlign = 'center';
-        ctx.fillText(npc.name, sx, sy - 18);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '10px serif';
-        ctx.fillText('💬', sx + 8, sy - 18);
+        ctx.fillText(npc.name, sx, sy - 20);
         ctx.restore();
       }
     }
@@ -1052,17 +1060,27 @@ export class GameEngine {
   _drawEffects(ctx, wcamX, wcamY) {
     for (const e of this.effects) {
       const alpha = e.life / e.maxLife;
-      ctx.save();
-      ctx.globalAlpha = alpha * 0.7;
-      ctx.strokeStyle = e.color;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(e.x - wcamX, e.y - wcamY, e.radius * (1 - alpha + 0.3), 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.fillStyle = e.color;
-      ctx.globalAlpha = alpha * 0.2;
-      ctx.fill();
-      ctx.restore();
+      const screenX = (e.x - wcamX) * this.zoom;
+      const screenY = (e.y - wcamY) * this.zoom;
+      
+      // Use sprite-based effects from registry
+      if (e.type === 'explosion' || e.type === 'death') {
+        assetIntegration.drawEffect(ctx, 'explosion', screenX, screenY, e.radius / 30, alpha);
+      } else if (e.type === 'fire' || e.type === 'magic') {
+        assetIntegration.drawEffect(ctx, 'fire', screenX, screenY, e.radius / 25, alpha);
+      } else if (e.type === 'dust' || e.type === 'movement') {
+        assetIntegration.drawEffect(ctx, 'dust1', screenX, screenY, e.radius / 20, alpha * 0.6);
+      } else {
+        // Fallback: glow ring for unknown effect types
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.6;
+        ctx.strokeStyle = e.color || '#fff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, e.radius * (1 - alpha + 0.3), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
   }
 
@@ -1149,19 +1167,17 @@ export class GameEngine {
     const sx = (ci.x - wcamX) * z;
     const sy = (ci.y - wcamY) * z;
     const alpha = ci.life / ci.maxLife;
-    const scale = 1 + (1 - alpha) * 0.5;
-
+    
+    // Use dust effect as ground marker
+    assetIntegration.drawEffect(ctx, 'dust2', sx, sy, 1.2, alpha * 0.8);
+    
+    // Subtle fade ring for polish
     ctx.save();
-    ctx.globalAlpha = alpha * 0.85;
+    ctx.globalAlpha = alpha * 0.4;
     ctx.strokeStyle = '#ffe88a';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(sx, sy, 10 * scale, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,232,138,0.4)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.arc(sx, sy, 16 * scale, 0, Math.PI * 2);
+    ctx.arc(sx, sy, 14, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
   }

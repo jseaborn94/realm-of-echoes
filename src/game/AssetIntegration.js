@@ -7,7 +7,7 @@
 
 import { 
   getPlayerSprite, getEnemySprite, getTerrainSprite, 
-  TERRAIN_SPRITES, PLAYER_SPRITES, ENEMY_SPRITES 
+  TERRAIN_SPRITES, PLAYER_SPRITES, ENEMY_SPRITES, EFFECT_SPRITES, UI_SPRITES
 } from './CompleteAssetRegistry.js';
 
 export class AssetIntegration {
@@ -155,6 +155,126 @@ export class AssetIntegration {
       const w = img.width * scale;
       const h = img.height * scale;
       ctx.drawImage(img, screenX - w / 2, screenY - h / 2, w, h);
+    } catch (err) {
+      // Silent fail
+    }
+  }
+
+  /**
+   * Draw a visual effect sprite (explosion, fire, dust)
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {string} effectType - Effect type (explosion, fire, dust1, dust2)
+   * @param {number} screenX - Center X
+   * @param {number} screenY - Center Y
+   * @param {number} scale - Scale multiplier (default 1)
+   * @param {number} alpha - Opacity (0-1)
+   */
+  async drawEffect(ctx, effectType, screenX, screenY, scale = 1, alpha = 1) {
+    const spriteUrl = EFFECT_SPRITES[effectType];
+    if (!spriteUrl) return;
+
+    try {
+      const img = await this.loadImage(spriteUrl);
+      if (!img) return;
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      const w = img.width * scale;
+      const h = img.height * scale;
+      ctx.drawImage(img, screenX - w / 2, screenY - h / 2, w, h);
+      ctx.restore();
+    } catch (err) {
+      // Silent fail
+    }
+  }
+
+  /**
+   * Draw a projectile sprite
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} screenX - Center X
+   * @param {number} screenY - Center Y
+   * @param {number} angle - Direction in radians
+   * @param {string} projectileType - Type (arrow, magic, etc.) defaults to fire
+   */
+  async drawProjectile(ctx, screenX, screenY, angle = 0, projectileType = 'fire') {
+    // Use fire effect as projectile visual (can be extended with dedicated projectile assets)
+    const spriteUrl = EFFECT_SPRITES[projectileType] || EFFECT_SPRITES.fire;
+    if (!spriteUrl) return;
+
+    try {
+      const img = await this.loadImage(spriteUrl);
+      if (!img) return;
+
+      ctx.save();
+      ctx.translate(screenX, screenY);
+      ctx.rotate(angle);
+      const w = img.width * 0.8;
+      const h = img.height * 0.8;
+      ctx.drawImage(img, -w / 2, -h / 2, w, h);
+      ctx.restore();
+    } catch (err) {
+      // Silent fail
+    }
+  }
+
+  /**
+   * Draw a UI button sprite
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {string} buttonType - Type (blue, red, bluePressed, redPressed)
+   * @param {number} screenX - Left X
+   * @param {number} screenY - Top Y
+   * @param {number} width - Button width
+   * @param {number} height - Button height
+   */
+  async drawButton(ctx, buttonType, screenX, screenY, width = 100, height = 40) {
+    const spriteUrl = UI_SPRITES.buttons[buttonType];
+    if (!spriteUrl) return;
+
+    try {
+      const img = await this.loadImage(spriteUrl);
+      if (!img) return;
+
+      ctx.drawImage(img, screenX, screenY, width, height);
+    } catch (err) {
+      // Silent fail
+    }
+  }
+
+  /**
+   * Draw a stat bar (health, mana, xp)
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {string} barSize - Size (big, small)
+   * @param {number} screenX - Left X
+   * @param {number} screenY - Top Y
+   * @param {number} fillPercent - Fill amount (0-1)
+   * @param {string} fillColor - Optional tint color
+   */
+  async drawBar(ctx, barSize, screenX, screenY, fillPercent, fillColor = null) {
+    const baseUrl = UI_SPRITES.bars[`${barSize}Base`];
+    const fillUrl = UI_SPRITES.bars[`${barSize}Fill`];
+    if (!baseUrl || !fillUrl) return;
+
+    try {
+      const baseImg = await this.loadImage(baseUrl);
+      const fillImg = await this.loadImage(fillUrl);
+      if (!baseImg || !fillImg) return;
+
+      const w = baseImg.width;
+      const h = baseImg.height;
+
+      // Draw base
+      ctx.drawImage(baseImg, screenX, screenY, w, h);
+
+      // Draw fill with clipping
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(screenX, screenY, w * fillPercent, h);
+      ctx.clip();
+      if (fillColor) {
+        ctx.globalTint = fillColor;
+      }
+      ctx.drawImage(fillImg, screenX, screenY, w, h);
+      ctx.restore();
     } catch (err) {
       // Silent fail
     }
