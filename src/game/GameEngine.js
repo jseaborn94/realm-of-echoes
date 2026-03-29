@@ -876,32 +876,27 @@ export class GameEngine {
     ctx.save();
     ctx.scale(z, z);
 
-    // Draw tiles
+    // LAYER 1: TERRAIN (BACKGROUND)
     this._drawWorld(ctx, W, H, wcamX, wcamY);
-
-    // Draw objects
     this._drawObjects(ctx, wcamX, wcamY);
+
+    // LAYER 2: ENVIRONMENTAL EFFECTS
+    this._drawEffects(ctx, wcamX, wcamY);
+    skillFX.draw(ctx, wcamX, wcamY, z);
+    combatFX.draw(ctx, wcamX, wcamY, z);
+    this.gatheringSystem.draw(ctx, wcamX, wcamY);
+
+    // LAYER 3: ACTORS (MUST BE LAST IN WORLD SPACE)
+    // Draw targeting preview first (behind actors)
+    if (this.targeting.active && this.targeting.config?.type !== 'self_aoe') {
+      this.targeting.draw(ctx, W / z / 2, H / z / 2, wcamX, wcamY, z);
+    }
 
     // Draw NPCs (pass player screen pos for fog visibility check)
     this._drawNPCs(ctx, wcamX, wcamY, W / z / 2, H / z / 2);
 
     // Draw enemies (ctx is already scaled by z, pass world-space cam + player screen pos for fog check)
     this.enemyManager.draw(ctx, wcamX, wcamY, W / z / 2, H / z / 2, FOG_RADIUS / this.zoom);
-
-    // Draw gathering nodes (ctx is already scaled by z, pass world-space cam)
-    this.gatheringSystem.draw(ctx, wcamX, wcamY);
-
-    // Draw effects and skill FX
-    this._drawEffects(ctx, wcamX, wcamY);
-    skillFX.draw(ctx, wcamX, wcamY, z);
-    
-    // Draw combat effects (melee impacts, projectiles, buff auras, etc.)
-    combatFX.draw(ctx, wcamX, wcamY, z);
-
-    // Draw targeting preview (world-space, before player so player renders on top)
-    if (this.targeting.active && this.targeting.config?.type !== 'self_aoe') {
-      this.targeting.draw(ctx, W / z / 2, H / z / 2, wcamX, wcamY, z);
-    }
 
     // Draw player (always screen-center in world-space)
     this._drawPlayer(ctx, W / z, H / z, wcamX, wcamY);
@@ -911,32 +906,13 @@ export class GameEngine {
       this.targeting.drawSelfAoe(ctx, W / z / 2, H / z / 2);
     }
 
-    ctx.restore(); // end zoom transform
+    ctx.restore(); // end zoom transform — RETURN TO SCREEN SPACE
 
-    // DEBUG: Force-draw test sprites to verify PNG rendering works
-    // This is temporary - to prove the render path can draw PNG assets
+    // LAYER 4: SCREEN-SPACE OVERLAYS (AFTER ALL WORLD DRAWING)
+    
+    // Debug test sprites (fixed screen position, no camera)
     if (this.debugRenderer) {
-      // Find one NPC for test draw
-      const testNPC = this.world.npcs.find(n => n.name === 'Captain Aldric');
-      if (testNPC) {
-        const npcScreenX = testNPC.col * TILE_SIZE * z - this.camX + TILE_SIZE / 2 * z;
-        const npcScreenY = testNPC.row * TILE_SIZE * z - this.camY + TILE_SIZE / 2 * z;
-        this.debugRenderer.drawTestNPCSprite(ctx, npcScreenX, npcScreenY);
-      }
-
-      // Find one enemy for test draw
-      if (this.enemyManager.enemies.length > 0) {
-        const testEnemy = this.enemyManager.enemies[0];
-        const enemyScreenX = testEnemy.x * z - this.camX;
-        const enemyScreenY = testEnemy.y * z - this.camY;
-        this.debugRenderer.drawTestEnemySprite(ctx, enemyScreenX, enemyScreenY);
-      }
-
-      // Draw test player sprite at screen center
-      this.debugRenderer.drawTestPlayerSprite(ctx, W / 2, H / 2);
-
-      // Draw debug labels
-      this.debugRenderer.drawDebugLabels(ctx, W, H);
+      this.debugRenderer.drawTestSpritesCentered(ctx, W, H);
     }
 
     // Fog of war — drawn in screen space on top
@@ -956,8 +932,6 @@ export class GameEngine {
 
     // Interact prompt
     if (this.nearNPC || this.nearChest || this.nearNode) this._drawInteractPrompt(ctx, W, H);
-
-
   }
 
   _drawWorld(ctx, W, H, wcamX, wcamY) {
