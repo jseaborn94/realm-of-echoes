@@ -3,6 +3,7 @@ import { RARITY_COLORS } from '../../game/constants.js';
 import { motion } from 'framer-motion';
 import { canEquipIntoSlot, normalizeItem } from '../../game/ItemSystem.js';
 import { calculatePlayerStats, getEquipmentBonuses, STAT_DISPLAY_INFO, formatStatValue } from '../../game/StatsCalculator.js';
+import ItemTooltip from './ItemTooltip.jsx';
 
 const SLOT_ICONS = {
   weapon: '⚔️', offhand: '🛡️', helmet: '⛑️', chest: '🧥',
@@ -30,26 +31,7 @@ const SLOT_LABELS = {
   amulet: 'Amulet', belt: 'Belt', cape: 'Cape'
 };
 
-function ItemTooltip({ item, isOffClass }) {
-  if (!item) return null;
-  return (
-    <div className="absolute z-50 w-48 panel-glass-gold rounded-lg p-3 pointer-events-none whitespace-normal"
-      style={{ bottom: '110%', left: '50%', transform: 'translateX(-50%)' }}>
-      <div className="font-cinzel font-bold text-sm mb-1" style={{ color: RARITY_COLORS[item.rarity] }}>
-        {item.name}
-      </div>
-      <div className="text-xs mb-1 capitalize" style={{ color: '#6a5a3a' }}>
-        {item.rarity} · {item.slot}
-      </div>
-      {Object.entries(item.stats || {}).map(([stat, val]) => val !== 0 && (
-        <div key={stat} className="text-xs flex justify-between">
-          <span style={{ color: '#8a7a5a' }}>{stat.toUpperCase()}</span>
-          <span style={{ color: '#4caf50' }}>+{val}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
+
 
 function EquipmentSlot({ slotKey, item, onDrop, onUnequip, classId }) {
   const [showTip, setShowTip] = useState(false);
@@ -107,7 +89,7 @@ function EquipmentSlot({ slotKey, item, onDrop, onUnequip, classId }) {
         {item ? (
           <>
             <span style={{ fontSize: '28px' }}>{item.icon}</span>
-            {showTip && <ItemTooltip item={item} />}
+            {showTip && <ItemTooltip item={item} position="right" />}
             <div className="absolute bottom-1 right-1 left-1 text-center"
               style={{ fontSize: '6px', color: RARITY_COLORS[item.rarity], textTransform: 'uppercase', fontWeight: 'bold' }}>
               {item.rarity.slice(0, 3)}

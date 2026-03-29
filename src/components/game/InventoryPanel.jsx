@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { RARITY_COLORS } from '../../game/constants.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import EquipmentPanel from './EquipmentPanel.jsx';
+import ItemTooltip from './ItemTooltip.jsx';
 import { isDraggable, meetsClassRestriction, normalizeItem } from '../../game/ItemSystem.js';
 
 const SLOT_ICONS = {
@@ -9,34 +10,7 @@ const SLOT_ICONS = {
   weapon: '⚔️', shield: '🛡️', ring1: '💍', ring2: '💍', amulet: '📿'
 };
 
-function ItemTooltip({ item, isOffClass }) {
-  if (!item) return null;
-  return (
-    <div className="absolute z-50 w-48 panel-glass-gold rounded-lg p-3 pointer-events-none"
-      style={{ bottom: '110%', left: '50%', transform: 'translateX(-50%)' }}>
-      <div className="font-cinzel font-bold text-sm mb-1" style={{ color: RARITY_COLORS[item.rarity] }}>
-        {item.name}
-      </div>
-      <div className="text-xs mb-1 capitalize" style={{ color: '#6a5a3a' }}>
-        {item.rarity} · {item.slot}
-      </div>
-      {item.weaponClass && (
-        <div className="text-xs mb-2" style={{ color: isOffClass ? '#ff6644' : '#4caf50' }}>
-          {isOffClass ? `⚠ ${CLASS_LABEL[item.weaponClass]} only` : `✓ ${CLASS_LABEL[item.weaponClass]} weapon`}
-        </div>
-      )}
-      {Object.entries(item.stats || {}).map(([stat, val]) => val !== 0 && (
-        <div key={stat} className="text-xs flex justify-between">
-          <span style={{ color: '#8a7a5a' }}>{stat.toUpperCase()}</span>
-          <span style={{ color: '#4caf50' }}>+{val}</span>
-        </div>
-      ))}
-      {isOffClass && (
-        <div className="text-xs mt-2" style={{ color: '#ff6644' }}>Cannot equip — wrong class</div>
-      )}
-    </div>
-  );
-}
+
 
 function EquipSlot({ slot, item, onDrop, onUnequip, isWarrior, classId }) {
   const [showTip, setShowTip] = useState(false);
@@ -68,7 +42,7 @@ function EquipSlot({ slot, item, onDrop, onUnequip, isWarrior, classId }) {
       {item ? (
         <>
           <span style={{ fontSize: '22px' }}>{item.icon}</span>
-          {showTip && <ItemTooltip item={item} isOffClass={isOffClassWeapon(item, classId)} />}
+          {showTip && <ItemTooltip item={item} position="top" />}
           <div className="absolute bottom-0 right-0 left-0 text-center"
             style={{ fontSize: '7px', color: RARITY_COLORS[item.rarity], background: 'rgba(0,0,0,0.6)', borderRadius: '0 0 6px 6px' }}>
             {item.rarity.slice(0, 3).toUpperCase()}
@@ -113,7 +87,7 @@ function InvItem({ item, onEquip, onUse, classId }) {
           {item.name.slice(0, 6)}
         </div>
         {showTip && (
-          <div className="absolute z-50 w-36 panel-glass-gold rounded-lg p-2 pointer-events-none"
+          <div className="absolute z-50 w-40 panel-glass-gold rounded-lg p-2 pointer-events-none"
             style={{ bottom: '110%', left: '50%', transform: 'translateX(-50%)' }}>
             <div className="font-cinzel font-bold text-xs mb-1" style={{ color: '#ffe88a' }}>{item.name}</div>
             <div className="text-xs" style={{ color: '#5a4a2a' }}>Qty: {item.qty || 1}</div>
@@ -153,7 +127,7 @@ function InvItem({ item, onEquip, onUse, classId }) {
       }}
     >
       <span style={{ fontSize: '22px' }}>{item.icon}</span>
-      {showTip && <ItemTooltip item={item} isOffClass={offClass} />}
+      {showTip && <ItemTooltip item={item} position="top" />}
       <div className="absolute bottom-0 right-0 left-0 text-center"
         style={{ fontSize: '7px', color: offClass ? '#ff6644' : RARITY_COLORS[item.rarity], background: 'rgba(0,0,0,0.6)', borderRadius: '0 0 6px 6px' }}>
         {offClass ? 'N/A' : item.rarity.slice(0, 3).toUpperCase()}
