@@ -137,48 +137,114 @@ function getItemRarity(item) {
 }
 
 /**
- * Get sprite URL for a weapon based on type and rarity
+ * Generic slot visuals fallback registry
+ * Used when no exact item or family visual exists
+ */
+const GENERIC_SLOT_VISUALS = {
+  weapon: {
+    sword: () => getTerrainSprite('resources', 'wood'),
+    bow: () => getTerrainSprite('resources', 'wood'),
+    staff: () => getTerrainSprite('resources', 'gold'),
+    spear: () => getTerrainSprite('resources', 'wood'),
+    axe: () => getTerrainSprite('resources', 'wood'),
+    dagger: () => getTerrainSprite('resources', 'wood'),
+  },
+  helmet: {
+    common: () => getTerrainSprite('rocks', 'rock1'),
+    uncommon: () => getTerrainSprite('rocks', 'rock2'),
+    rare: () => getTerrainSprite('rocks', 'rock3'),
+    epic: () => getTerrainSprite('rocks', 'rock4'),
+  },
+  chest: {
+    common: () => getTerrainSprite('rocks', 'rock2'),
+    uncommon: () => getTerrainSprite('rocks', 'rock3'),
+    rare: () => getTerrainSprite('resources', 'gold'),
+    epic: () => getTerrainSprite('resources', 'gold'),
+  },
+  shield: {
+    common: () => getTerrainSprite('rocks', 'rock4'),
+    uncommon: () => getTerrainSprite('rocks', 'rock3'),
+    rare: () => getTerrainSprite('resources', 'gold'),
+    epic: () => getTerrainSprite('resources', 'gold'),
+  },
+};
+
+/**
+ * Get sprite URL for a weapon with fallback priority:
+ * 1. Exact item sprite from EQUIPMENT_SPRITES
+ * 2. Weapon type family visual (generic bow, sword, staff, etc.)
+ * 3. Resource-based fallback by type
  */
 function getWeaponSprite(weaponType, rarity = 'common') {
-  // Prefer specific weapon type; fall back to wood/gold resources
+  // Priority 1: Exact weapon sprite
   const weapons = EQUIPMENT_SPRITES?.weapons || {};
-  
   if (weapons[weaponType]) return weapons[weaponType];
   
-  // Fallback based on rarity and type
-  if (weaponType === 'staff' || weaponType === 'wand') {
-    return getTerrainSprite('resources', 'gold');
-  }
-  if (weaponType === 'bow') {
-    return getTerrainSprite('resources', 'wood');
-  }
+  // Priority 2: Generic weapon family visual
+  const genericWeapon = GENERIC_SLOT_VISUALS.weapon[weaponType];
+  if (genericWeapon) return genericWeapon();
   
-  // Default to sword-like weapon
+  // Priority 3: Default sword-like fallback
   return getTerrainSprite('resources', 'wood');
 }
 
 /**
- * Get helmet sprite based on rarity
+ * Get helmet sprite with fallback priority:
+ * 1. Exact rarity sprite
+ * 2. Generic rarity-based helmet visual
+ * 3. Default helmet
  */
 function getHelmetSprite(rarity = 'common') {
+  // Priority 1: Exact rarity sprite
   const helmets = EQUIPMENT_SPRITES?.helmets || {};
-  return helmets[rarity] || helmets.common || getTerrainSprite('rocks', 'rock1');
+  if (helmets[rarity]) return helmets[rarity];
+  if (helmets.common) return helmets.common;
+  
+  // Priority 2: Generic rarity-based helmet
+  const genericHelmet = GENERIC_SLOT_VISUALS.helmet[rarity] || GENERIC_SLOT_VISUALS.helmet.common;
+  if (genericHelmet) return genericHelmet();
+  
+  // Priority 3: Fallback
+  return getTerrainSprite('rocks', 'rock1');
 }
 
 /**
- * Get chest/armor sprite based on rarity
+ * Get chest/armor sprite with fallback priority:
+ * 1. Exact rarity sprite
+ * 2. Generic rarity-based chest visual
+ * 3. Default chest
  */
 function getChestSprite(rarity = 'common') {
+  // Priority 1: Exact rarity sprite
   const chest = EQUIPMENT_SPRITES?.chest || {};
-  return chest[rarity] || chest.common || getTerrainSprite('rocks', 'rock2');
+  if (chest[rarity]) return chest[rarity];
+  if (chest.common) return chest.common;
+  
+  // Priority 2: Generic rarity-based chest
+  const genericChest = GENERIC_SLOT_VISUALS.chest[rarity] || GENERIC_SLOT_VISUALS.chest.common;
+  if (genericChest) return genericChest();
+  
+  // Priority 3: Fallback
+  return getTerrainSprite('rocks', 'rock2');
 }
 
 /**
- * Get shield sprite
+ * Get shield sprite with fallback priority:
+ * 1. Exact shield sprite
+ * 2. Generic rarity-based shield
+ * 3. Default shield
  */
-function getShieldSprite() {
+function getShieldSprite(rarity = 'common') {
+  // Priority 1: Exact shield sprite
   const offhand = EQUIPMENT_SPRITES?.offhand || {};
-  return offhand.shield || getTerrainSprite('rocks', 'rock4');
+  if (offhand.shield) return offhand.shield;
+  
+  // Priority 2: Generic rarity-based shield
+  const genericShield = GENERIC_SLOT_VISUALS.shield[rarity] || GENERIC_SLOT_VISUALS.shield.common;
+  if (genericShield) return genericShield();
+  
+  // Priority 3: Fallback
+  return getTerrainSprite('rocks', 'rock4');
 }
 
 /**
@@ -213,10 +279,11 @@ export function mapGearVisual(slot, item, classId = 'warrior', animState = 'idle
     const rarity = getItemRarity(item);
     spriteUrl = getChestSprite(rarity);
   } else if (slot === 'shield' || slot === 'offhand') {
-    spriteUrl = getShieldSprite();
+    const rarity = getItemRarity(item);
+    spriteUrl = getShieldSprite(rarity);
   }
 
-  // If no sprite found, try to find a reasonable fallback
+  // Final fallback: generic rock if absolutely nothing else exists
   if (!spriteUrl) {
     spriteUrl = getTerrainSprite('rocks', 'rock1');
   }
@@ -274,5 +341,6 @@ export default {
   mapGearVisual,
   normalizeItemForGear,
   getEquippedVisuals,
-  CLASS_GEAR_CONFIG,
+  GEAR_ANCHOR_POINTS,
+  GENERIC_SLOT_VISUALS,
 };
