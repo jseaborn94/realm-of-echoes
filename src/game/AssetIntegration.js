@@ -62,29 +62,34 @@ export class AssetIntegration {
    * @param {string} action - Action (idle, run, attack, etc.)
    */
   async drawPlayerSprite(ctx, classId, screenX, screenY, color = 'blue', action = 'idle') {
-    // Map action to available sprite (fallback to idle if action unavailable)
-    const actionMap = { run: 'idle', attack: 'idle', death: 'idle' };
-    const spriteAction = action && actionMap[action] ? actionMap[action] : 'idle';
-    
     // Get sprite URL from registry
     const spriteUrl = getPlayerSprite(classId, color);
     if (!spriteUrl) {
-      console.warn(`[ASSET] No player sprite for ${classId} ${color}`);
-      this.unmappedAssets.add(`player_${classId}_${color}`);
+      console.error(`[Render] No sprite URL for player: class=${classId} color=${color}`);
       return;
     }
 
     try {
       const img = await this.loadImage(spriteUrl);
-      if (!img) return;
+      if (!img) {
+        console.error(`[Render] Sprite failed to load: ${spriteUrl}`);
+        return;
+      }
 
       // Draw sprite centered at (screenX, screenY)
-      const scale = 2; // Adjust as needed for world scale
+      const scale = 2;
       const w = img.width * scale;
       const h = img.height * scale;
+      
+      // Log successful render once per session (avoid spam)
+      if (!this._loggedPlayer) {
+        console.log(`[Render] Player sprite loaded: ${classId} ${color} (${img.width}x${img.height}px)`);
+        this._loggedPlayer = true;
+      }
+      
       ctx.drawImage(img, screenX - w / 2, screenY - h, w, h);
     } catch (err) {
-      // Silent fail, already logged in loadImage
+      console.error(`[Render] Exception drawing player: ${err.message}`);
     }
   }
 
@@ -100,11 +105,9 @@ export class AssetIntegration {
   async drawEnemySprite(ctx, enemyType, screenX, screenY, action = 'idle', flipX = 1) {
     const spriteUrl = getEnemySprite(enemyType, action);
     if (!spriteUrl) {
-      // Fallback to idle if action not available
       const fallbackUrl = getEnemySprite(enemyType, 'idle');
       if (!fallbackUrl) {
-        console.warn(`[ASSET] No enemy sprite for ${enemyType}`);
-        this.unmappedAssets.add(`enemy_${enemyType}`);
+        console.error(`[Render] No sprite URL for enemy: type=${enemyType}`);
         return;
       }
       return this.drawEnemySprite(ctx, enemyType, screenX, screenY, 'idle', flipX);
@@ -112,7 +115,10 @@ export class AssetIntegration {
 
     try {
       const img = await this.loadImage(spriteUrl);
-      if (!img) return;
+      if (!img) {
+        console.error(`[Render] Enemy sprite failed to load: ${spriteUrl}`);
+        return;
+      }
 
       const scale = 2;
       const w = img.width * scale;
@@ -128,7 +134,7 @@ export class AssetIntegration {
       }
       ctx.restore();
     } catch (err) {
-      // Silent fail
+      console.error(`[Render] Exception drawing enemy: ${err.message}`);
     }
   }
 

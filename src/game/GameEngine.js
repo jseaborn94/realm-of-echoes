@@ -367,7 +367,7 @@ export class GameEngine {
     this.lastTime = now;
 
     this._update(dt);
-    this._draw();
+    this._draw().catch(err => console.error('[RENDER] Draw error:', err));
 
     this.animFrame = requestAnimationFrame(() => this._loop());
   }
@@ -856,7 +856,7 @@ export class GameEngine {
     }
   }
 
-  _draw() {
+  async _draw() {
     const ctx = this.ctx;
     const W = this.canvas.width;
     const H = this.canvas.height;
@@ -878,7 +878,7 @@ export class GameEngine {
     this._drawObjects(ctx, wcamX, wcamY);
 
     // Draw NPCs (pass player screen pos for fog visibility check)
-    this._drawNPCs(ctx, wcamX, wcamY, W / z / 2, H / z / 2);
+    await this._drawNPCs(ctx, wcamX, wcamY, W / z / 2, H / z / 2);
 
     // Draw enemies (ctx is already scaled by z, pass world-space cam + player screen pos for fog check)
     this.enemyManager.draw(ctx, wcamX, wcamY, W / z / 2, H / z / 2, FOG_RADIUS / this.zoom);
@@ -899,7 +899,7 @@ export class GameEngine {
     }
 
     // Draw player (always screen-center in world-space)
-    this._drawPlayer(ctx, W / z, H / z, wcamX, wcamY);
+    await this._drawPlayer(ctx, W / z, H / z, wcamX, wcamY);
 
     // Draw self-aoe preview around player (also world-space)
     if (this.targeting.active && this.targeting.config?.type === 'self_aoe') {
@@ -1030,7 +1030,7 @@ export class GameEngine {
     }
   }
 
-  _drawNPCs(ctx, wcamX, wcamY, playerSX, playerSY) {
+  async _drawNPCs(ctx, wcamX, wcamY, playerSX, playerSY) {
     const fogRadiusWorld = FOG_RADIUS / this.zoom;
     for (const npc of this.world.npcs) {
       const sx = npc.col * TILE_SIZE - wcamX + TILE_SIZE / 2;
@@ -1039,10 +1039,12 @@ export class GameEngine {
       const distFromPlayer = Math.sqrt((sx - playerSX) ** 2 + (sy - playerSY) ** 2);
       const visAlpha = Math.max(0, Math.min(1, 1 - (distFromPlayer - fogRadiusWorld * 0.7) / (fogRadiusWorld * 0.3)));
 
-      // Draw NPC as sprite (use unit sprite with idle animation)
-      const npcClass = npc.role === 'merchant' ? 'archer' : 'warrior'; // diverse NPC types
+      // Draw NPC as sprite
+      const npcClass = npc.role === 'merchant' ? 'archer' : 'warrior';
       const npcColor = npc.color || 'black';
-      assetIntegration.drawPlayerSprite(ctx, npcClass, sx, sy, npcColor, 'idle').catch(() => {
+      try {
+        await assetIntegration.drawPlayerSprite(ctx, npcClass, sx, sy, npcColor, 'idle');
+      } catch (err) {
         // Fallback: simple humanoid placeholder
         ctx.fillStyle = '#c8a060';
         ctx.beginPath();
@@ -1050,7 +1052,7 @@ export class GameEngine {
         ctx.fill();
         ctx.fillStyle = '#6a3a1a';
         ctx.fillRect(sx - 6, sy + 2, 12, 10);
-      });
+      }
 
       // Labels — only when inside vision
       if (visAlpha > 0) {
