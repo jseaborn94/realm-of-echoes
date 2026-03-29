@@ -1040,12 +1040,14 @@ export class GameEngine {
       const distFromPlayer = Math.sqrt((sx - playerSX) ** 2 + (sy - playerSY) ** 2);
       const visAlpha = Math.max(0, Math.min(1, 1 - (distFromPlayer - fogRadiusWorld * 0.7) / (fogRadiusWorld * 0.3)));
 
-      // Draw NPC sprite synchronously (must be preloaded)
+      // Map NPC role to class sprite: merchant→archer, guard/other→warrior
       const npcClass = npc.role === 'merchant' ? 'archer' : 'warrior';
       const npcColor = npc.color || 'black';
+      
+      // Draw NPC sprite synchronously (must be preloaded)
       const spriteDrawn = assetIntegration.drawPlayerSpriteSync(ctx, npcClass, sx, sy, npcColor, 'idle');
       
-      // Fallback: simple humanoid placeholder if sprite not loaded
+      // Fallback: simple humanoid placeholder if sprite fails
       if (!spriteDrawn) {
         ctx.fillStyle = '#c8a060';
         ctx.beginPath();
@@ -1081,7 +1083,7 @@ export class GameEngine {
     ctx.fill();
 
     // Get animation state and facing direction
-    const classId = gs.classData?.id || 'warrior';
+    const classId = (gs.classData?.id || 'warrior').toLowerCase();
     // Use level-bracket color for visual progression
     const color = getLevelBracketColor(gs.level);
     // Determine animation state: attack takes priority, then movement, else idle
@@ -1099,7 +1101,7 @@ export class GameEngine {
       equipmentRenderer.drawEquipmentLayer(ctx, px, py, gs.equipped, classId, animState, 'back', facingAngle);
     } catch (err) {}
 
-    // 2. Base character sprite - synchronous
+    // 2. Base character sprite - synchronous (with proper animation state)
     const spriteDrawn = assetIntegration.drawPlayerSpriteSync(ctx, classId, px, py, color, animState);
     if (!spriteDrawn) {
       // Fallback: simple rectangle placeholder

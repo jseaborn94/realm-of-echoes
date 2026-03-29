@@ -754,9 +754,16 @@ export class EnemyManager {
     }
 
     // Draw enemy sprite from registry (synchronous - must be preloaded)
-    const enemyType = e.type || 'goblin';
-    const action = e.moving ? 'run' : e.attacking ? 'attack' : 'idle';
-    const spriteDrawn = assetIntegration.drawEnemySpriteSync(ctx, enemyType, sx, sy, action, e.facingLeft ? -1 : 1);
+    const enemyType = (e.type || 'goblin').toLowerCase();
+    // Determine animation state based on combat status
+    let animState = 'idle';
+    if (e.dead || e.deathTimer !== null) animState = 'death';
+    else if (e.state === 'charge') animState = 'attack';
+    else if (e.state === 'chase' && dist < e.alertRadius * 1.2) animState = 'run';
+    else if (e.state === 'chase') animState = 'run';
+    else if (e.state === 'attack') animState = 'attack';
+    
+    const spriteDrawn = assetIntegration.drawEnemySpriteSync(ctx, enemyType, sx, sy, animState, e.facingLeft ? -1 : 1);
     
     // Fallback: draw circle placeholder if sprite not loaded
     if (!spriteDrawn) {

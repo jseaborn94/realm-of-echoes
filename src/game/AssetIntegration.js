@@ -299,15 +299,32 @@ export class AssetIntegration {
 
   /**
    * Draw player sprite synchronously (must be preloaded first)
+   * Maps: classId → registry category, animState → idle/move/attack
    */
-  drawPlayerSpriteSync(ctx, classId, screenX, screenY, color = 'blue', action = 'idle') {
+  drawPlayerSpriteSync(ctx, classId, screenX, screenY, color = 'blue', animState = 'idle') {
     const { getPlayerSprite } = require('./CompleteAssetRegistry.js');
-    const spriteUrl = getPlayerSprite(classId, color);
+    
+    // Normalize class ID
+    const normalizedClass = (classId || 'warrior').toLowerCase();
+    const validClasses = ['warrior', 'archer', 'lancer', 'monk'];
+    if (!validClasses.includes(normalizedClass)) {
+      if (!this._loggedMissing.has(`invalid_class_${classId}`)) {
+        console.warn(`[Render] Invalid player class: ${classId}, defaulting to warrior`);
+        this._loggedMissing.add(`invalid_class_${classId}`);
+      }
+      return false;
+    }
+
+    // Map animation state: use idle if unrecognized
+    const validStates = ['idle', 'move', 'attack'];
+    const mappedState = validStates.includes(animState) ? animState : 'idle';
+    
+    const spriteUrl = getPlayerSprite(normalizedClass, color, mappedState);
     
     if (!spriteUrl) {
-      if (!this._loggedMissing.has(`player_${classId}_${color}`)) {
-        console.warn(`[Render] No sprite URL for player: class=${classId} color=${color}`);
-        this._loggedMissing.add(`player_${classId}_${color}`);
+      if (!this._loggedMissing.has(`player_${normalizedClass}_${color}_${mappedState}`)) {
+        console.warn(`[Render] Player sprite missing from registry: class=${normalizedClass} color=${color} state=${mappedState}`);
+        this._loggedMissing.add(`player_${normalizedClass}_${color}_${mappedState}`);
       }
       return false;
     }
@@ -335,15 +352,24 @@ export class AssetIntegration {
 
   /**
    * Draw enemy sprite synchronously (must be preloaded first)
+   * Maps: enemyType → registry, animState → idle/run/attack/death
    */
-  drawEnemySpriteSync(ctx, enemyType, screenX, screenY, action = 'idle', flipX = 1) {
+  drawEnemySpriteSync(ctx, enemyType, screenX, screenY, animState = 'idle', flipX = 1) {
     const { getEnemySprite } = require('./CompleteAssetRegistry.js');
-    const spriteUrl = getEnemySprite(enemyType, action);
+    
+    // Normalize type
+    const normalizedType = (enemyType || 'goblin').toLowerCase();
+    
+    // Map animation state: use idle if unrecognized
+    const validStates = ['idle', 'run', 'attack', 'death'];
+    const mappedState = validStates.includes(animState) ? animState : 'idle';
+    
+    const spriteUrl = getEnemySprite(normalizedType, mappedState);
     
     if (!spriteUrl) {
-      if (!this._loggedMissing.has(`enemy_${enemyType}`)) {
-        console.warn(`[Render] No sprite URL for enemy: type=${enemyType}`);
-        this._loggedMissing.add(`enemy_${enemyType}`);
+      if (!this._loggedMissing.has(`enemy_${normalizedType}_${mappedState}`)) {
+        console.warn(`[Render] Enemy sprite missing from registry: type=${normalizedType} state=${mappedState}`);
+        this._loggedMissing.add(`enemy_${normalizedType}_${mappedState}`);
       }
       return false;
     }
@@ -351,7 +377,7 @@ export class AssetIntegration {
     const img = this.imageCache.get(spriteUrl);
     if (!img) {
       if (!this._loggedMissing.has(spriteUrl)) {
-        console.warn(`[Render] Enemy sprite not preloaded: ${spriteUrl}`);
+        console.warn(`[Render] Sprite not preloaded: ${spriteUrl}`);
         this._loggedMissing.add(spriteUrl);
       }
       return false;

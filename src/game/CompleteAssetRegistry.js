@@ -244,11 +244,24 @@ export const BUILDING_SPRITES = {
 /**
  * Get an enemy sprite URL by type and action
  * @param {string} type - Enemy type (bear, gnoll, lizard, etc.)
- * @param {string} action - Action (idle, run, walk, attack, etc.)
+ * @param {string} action - Action (idle, run, walk, attack, death, etc.)
  * @returns {string|null} Sprite URL or null
  */
 export function getEnemySprite(type, action = 'idle') {
-  return ENEMY_SPRITES[type]?.[action] || null;
+  const normalizedType = (type || 'goblin').toLowerCase();
+  const mappedAction = action || 'idle';
+  
+  // Try exact match first
+  if (ENEMY_SPRITES[normalizedType]?.[mappedAction]) {
+    return ENEMY_SPRITES[normalizedType][mappedAction];
+  }
+  
+  // Fallback to idle if action not found
+  if (ENEMY_SPRITES[normalizedType]?.['idle']) {
+    return ENEMY_SPRITES[normalizedType]['idle'];
+  }
+  
+  return null;
 }
 
 /**
@@ -261,13 +274,28 @@ export function getRandomEnemyType() {
 }
 
 /**
- * Get player sprite URL by class and color
- * @param {string} classId - Character class
- * @param {string} color - Color variant
+ * Get player sprite URL by class, color, and animation state
+ * @param {string} classId - Character class (warrior, archer, lancer, monk)
+ * @param {string} color - Color variant (blue, red, yellow, purple, black)
+ * @param {string} animState - Animation state (idle, move, attack)
  * @returns {string|null} Sprite URL or null
  */
-export function getPlayerSprite(classId, color = 'blue') {
-  return PLAYER_SPRITES[classId]?.[color] || null;
+export function getPlayerSprite(classId, color = 'blue', animState = 'idle') {
+  const normalizedClass = (classId || 'warrior').toLowerCase();
+  const normalizedColor = (color || 'blue').toLowerCase();
+  const mappedState = animState || 'idle';
+  
+  // Try exact match first
+  if (PLAYER_SPRITES[normalizedClass]?.[normalizedColor]?.[mappedState]) {
+    return PLAYER_SPRITES[normalizedClass][normalizedColor][mappedState];
+  }
+  
+  // Fallback to idle animation if state not found
+  if (PLAYER_SPRITES[normalizedClass]?.[normalizedColor]?.['idle']) {
+    return PLAYER_SPRITES[normalizedClass][normalizedColor]['idle'];
+  }
+  
+  return null;
 }
 
 /**
