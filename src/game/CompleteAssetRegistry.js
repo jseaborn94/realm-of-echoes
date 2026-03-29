@@ -177,25 +177,37 @@ export const PROJECTILE_SPRITES = {
 };
 
 // Equipment sprites — layered on top of base character
+// Uses combat-appropriate visuals: unit overlays for helmets/armor, linear assets for weapons, compact assets for shields
 export const EQUIPMENT_SPRITES = {
   helmets: {
-    common: `${GITHUB_RAW_BASE}/UI Elements/UI Elements/Human Avatars/Avatars_01.png`,
-    rare: `${GITHUB_RAW_BASE}/UI Elements/UI Elements/Human Avatars/Avatars_02.png`,
-    epic: `${GITHUB_RAW_BASE}/UI Elements/UI Elements/Human Avatars/Avatars_03.png`,
+    // Helmets derived from unit color variants — humanoid silhouette with helmet structure
+    common: `${GITHUB_RAW_BASE}/Units/Black Units/Warrior/Warrior_Idle.png`,       // Black armored silhouette
+    uncommon: `${GITHUB_RAW_BASE}/Units/Blue Units/Warrior/Warrior_Idle.png`,      // Blue knight helm
+    rare: `${GITHUB_RAW_BASE}/Units/Red Units/Warrior/Warrior_Idle.png`,           // Red ornate helm
+    epic: `${GITHUB_RAW_BASE}/Units/Yellow Units/Warrior/Warrior_Idle.png`,        // Gold regal helm
   },
   chest: {
-    common: `${GITHUB_RAW_BASE}/Terrain/Decorations/Rocks/Rock1.png`,
-    rare: `${GITHUB_RAW_BASE}/Terrain/Decorations/Rocks/Rock2.png`,
-    epic: `${GITHUB_RAW_BASE}/Terrain/Decorations/Rocks/Rock3.png`,
+    // Chest armor from unit sprites — torso-focused silhouettes with armor definition
+    common: `${GITHUB_RAW_BASE}/Units/Black Units/Lancer/Lancer_Idle.png`,         // Simple black plate
+    uncommon: `${GITHUB_RAW_BASE}/Units/Blue Units/Lancer/Lancer_Idle.png`,        // Blue armored torso
+    rare: `${GITHUB_RAW_BASE}/Units/Red Units/Archer/Archer_Idle.png`,             // Red ornate vest
+    epic: `${GITHUB_RAW_BASE}/Units/Yellow Units/Monk/Idle.png`,                   // Gold ceremonial armor
   },
   weapons: {
-    sword: `${GITHUB_RAW_BASE}/Terrain/Resources/Wood/Wood Resource/Wood Resource.png`,
-    bow: `${GITHUB_RAW_BASE}/Terrain/Resources/Wood/Trees/Tree1.png`,
-    staff: `${GITHUB_RAW_BASE}/Terrain/Resources/Gold/Gold Resource/Gold_Resource.png`,
-    spear: `${GITHUB_RAW_BASE}/Terrain/Resources/Wood/Trees/Tree2.png`,
+    // Weapons use linear, vertical assets that read as held implements
+    sword: `${GITHUB_RAW_BASE}/Terrain/Resources/Wood/Trees/Tree1.png`,            // Vertical tree as blade shape
+    bow: `${GITHUB_RAW_BASE}/Terrain/Resources/Gold/Gold Resource/Gold_Resource.png`, // Gold ore as bow prod
+    staff: `${GITHUB_RAW_BASE}/Terrain/Resources/Gold/Gold Resource/Gold_Resource.png`, // Gold ore as staff orb
+    spear: `${GITHUB_RAW_BASE}/Terrain/Resources/Wood/Trees/Tree2.png`,            // Vertical tree as spear shaft
+    axe: `${GITHUB_RAW_BASE}/Terrain/Resources/Wood/Wood Resource/Wood Resource.png`,   // Wood block as axe head
+    dagger: `${GITHUB_RAW_BASE}/Terrain/Water/Rocks/Rocks_01.png`,                 // Compact rock as dagger
   },
   offhand: {
-    shield: `${GITHUB_RAW_BASE}/Terrain/Decorations/Rocks/Rock4.png`,
+    // Shields use compact, rounded assets with durable appearance
+    common: `${GITHUB_RAW_BASE}/Terrain/Water/Rocks/Rocks_02.png`,                 // Compact water rock (common shield)
+    uncommon: `${GITHUB_RAW_BASE}/Terrain/Resources/Wood/Trees/Stump 1.png`,       // Wood stump (reinforced shield)
+    rare: `${GITHUB_RAW_BASE}/Terrain/Decorations/Rocks/Rock3.png`,                // Large rock (rare shield)
+    epic: `${GITHUB_RAW_BASE}/Terrain/Resources/Gold/Gold Resource/Gold_Resource.png`, // Gold ore (epic shield)
   },
 };
 

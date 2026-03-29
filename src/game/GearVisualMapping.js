@@ -138,36 +138,38 @@ function getItemRarity(item) {
 
 /**
  * Generic slot visuals fallback registry
- * Used when no exact item or family visual exists
+ * Uses unit-derived sprites and linear assets for believable gear appearance
  */
 const GENERIC_SLOT_VISUALS = {
   weapon: {
-    sword: () => getTerrainSprite('resources', 'wood'),
-    bow: () => getTerrainSprite('resources', 'wood'),
-    staff: () => getTerrainSprite('resources', 'gold'),
-    spear: () => getTerrainSprite('resources', 'wood'),
-    axe: () => getTerrainSprite('resources', 'wood'),
-    dagger: () => getTerrainSprite('resources', 'wood'),
+    sword: () => `${GITHUB_RAW_BASE}/Terrain/Resources/Wood/Trees/Tree1.png`,      // Vertical blade shape
+    bow: () => `${GITHUB_RAW_BASE}/Terrain/Resources/Gold/Gold Resource/Gold_Resource.png`, // Prod/limb shape
+    staff: () => `${GITHUB_RAW_BASE}/Terrain/Resources/Gold/Gold Resource/Gold_Resource.png`, // Orb-tipped staff
+    spear: () => `${GITHUB_RAW_BASE}/Terrain/Resources/Wood/Trees/Tree2.png`,      // Vertical shaft
+    axe: () => `${GITHUB_RAW_BASE}/Terrain/Resources/Wood/Wood Resource/Wood Resource.png`,  // Head shape
+    dagger: () => `${GITHUB_RAW_BASE}/Terrain/Water/Rocks/Rocks_01.png`,           // Compact blade
   },
   helmet: {
-    common: () => getTerrainSprite('rocks', 'rock1'),
-    uncommon: () => getTerrainSprite('rocks', 'rock2'),
-    rare: () => getTerrainSprite('rocks', 'rock3'),
-    epic: () => getTerrainSprite('rocks', 'rock4'),
+    common: () => `${GITHUB_RAW_BASE}/Units/Black Units/Warrior/Warrior_Idle.png`, // Dark helm
+    uncommon: () => `${GITHUB_RAW_BASE}/Units/Blue Units/Warrior/Warrior_Idle.png`, // Blue helm
+    rare: () => `${GITHUB_RAW_BASE}/Units/Red Units/Warrior/Warrior_Idle.png`,     // Red helm
+    epic: () => `${GITHUB_RAW_BASE}/Units/Yellow Units/Warrior/Warrior_Idle.png`,  // Gold helm
   },
   chest: {
-    common: () => getTerrainSprite('rocks', 'rock2'),
-    uncommon: () => getTerrainSprite('rocks', 'rock3'),
-    rare: () => getTerrainSprite('resources', 'gold'),
-    epic: () => getTerrainSprite('resources', 'gold'),
+    common: () => `${GITHUB_RAW_BASE}/Units/Black Units/Lancer/Lancer_Idle.png`,   // Simple plate
+    uncommon: () => `${GITHUB_RAW_BASE}/Units/Blue Units/Lancer/Lancer_Idle.png`,  // Blue armor
+    rare: () => `${GITHUB_RAW_BASE}/Units/Red Units/Archer/Archer_Idle.png`,       // Red armor
+    epic: () => `${GITHUB_RAW_BASE}/Units/Yellow Units/Monk/Idle.png`,             // Gold armor
   },
   shield: {
-    common: () => getTerrainSprite('rocks', 'rock4'),
-    uncommon: () => getTerrainSprite('rocks', 'rock3'),
-    rare: () => getTerrainSprite('resources', 'gold'),
-    epic: () => getTerrainSprite('resources', 'gold'),
+    common: () => `${GITHUB_RAW_BASE}/Terrain/Water/Rocks/Rocks_02.png`,           // Water rock
+    uncommon: () => `${GITHUB_RAW_BASE}/Terrain/Resources/Wood/Trees/Stump 1.png`, // Wood stump
+    rare: () => `${GITHUB_RAW_BASE}/Terrain/Decorations/Rocks/Rock3.png`,          // Large rock
+    epic: () => `${GITHUB_RAW_BASE}/Terrain/Resources/Gold/Gold Resource/Gold_Resource.png`, // Gold ore
   },
 };
+
+const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/jseaborn94/Realm-of-Echoes-Assets/main/assets';
 
 /**
  * Get sprite URL for a weapon with fallback priority:
@@ -229,22 +231,23 @@ function getChestSprite(rarity = 'common') {
 }
 
 /**
- * Get shield sprite with fallback priority:
- * 1. Exact shield sprite
- * 2. Generic rarity-based shield
- * 3. Default shield
+ * Get shield sprite with rarity-based priority:
+ * 1. Rarity-specific shield sprite
+ * 2. Generic rarity-based shield visual
+ * 3. Common rarity fallback
  */
 function getShieldSprite(rarity = 'common') {
-  // Priority 1: Exact shield sprite
+  // Priority 1: Rarity-specific sprite from registry
   const offhand = EQUIPMENT_SPRITES?.offhand || {};
-  if (offhand.shield) return offhand.shield;
+  if (offhand[rarity]) return offhand[rarity];
+  if (offhand.common) return offhand.common;
   
   // Priority 2: Generic rarity-based shield
   const genericShield = GENERIC_SLOT_VISUALS.shield[rarity] || GENERIC_SLOT_VISUALS.shield.common;
   if (genericShield) return genericShield();
   
-  // Priority 3: Fallback
-  return getTerrainSprite('rocks', 'rock4');
+  // Priority 3: Fallback to water rock
+  return `https://raw.githubusercontent.com/jseaborn94/Realm-of-Echoes-Assets/main/assets/Terrain/Water/Rocks/Rocks_02.png`;
 }
 
 /**
