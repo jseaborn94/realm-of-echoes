@@ -333,12 +333,12 @@ export class GameEngine {
     if (this.potionCooldowns.hp > 0) this.potionCooldowns.hp = Math.max(0, this.potionCooldowns.hp - dt * 1000);
     if (this.potionCooldowns.mp > 0) this.potionCooldowns.mp = Math.max(0, this.potionCooldowns.mp - dt * 1000);
 
-    // HP regen
-    if (gs.hp < gs.maxHp) {
-      gs.hp = Math.min(gs.maxHp, gs.hp + 2 * dt);
+    // HP regen — ensure values stay clamped [0, max]
+    if (gs.hp > 0 && gs.hp < gs.maxHp) {
+      gs.hp = Math.max(0, Math.min(gs.maxHp, gs.hp + 2 * dt));
     }
     if (gs.mp < gs.maxMp) {
-      gs.mp = Math.min(gs.maxMp, gs.mp + 5 * dt);
+      gs.mp = Math.max(0, Math.min(gs.maxMp, gs.mp + 5 * dt));
     }
 
     // Effects
@@ -425,7 +425,9 @@ export class GameEngine {
 
     // Player takes damage from enemies
     if (enemyResult.playerDmgTotal > 0) {
-      gs.hp = Math.max(0, gs.hp - enemyResult.playerDmgTotal);
+      const dmgBefore = gs.hp;
+      gs.hp = Math.max(0, Math.min(gs.maxHp, gs.hp - enemyResult.playerDmgTotal));
+      console.log(`[DAMAGE] Enemy hit: ${enemyResult.playerDmgTotal} | ${dmgBefore.toFixed(1)} → ${gs.hp.toFixed(1)} | Dead: ${gs.hp <= 0}`);
     }
 
     // XP from kills
@@ -441,15 +443,20 @@ export class GameEngine {
       gs.lootFound = loot;
     }
 
-    // Player death check
+    // Player death check — ONLY trigger when hp <= 0
     if (gs.hp <= 0) {
-      gs.hp = gs.maxHp * 0.3;
+      console.log(`[DEATH] Player defeated. Respawning with ${(gs.maxHp * 0.3).toFixed(1)} HP`);
+      gs.hp = Math.max(0, Math.min(gs.maxHp, gs.maxHp * 0.3));
       this.px = 185 * TILE_SIZE;
       this.py = 390 * TILE_SIZE;
       this.destination = null;
       this.damageNumbers.push({ x: this.px, y: this.py - 40, text: 'DEFEATED! Respawning...', color: '#ff4444', life: 3.0, big: true });
     }
 
+    // SAFETY CLAMP: ensure health values are always within [0, max]
+    gs.hp = Math.max(0, Math.min(gs.maxHp, gs.hp));
+    gs.mp = Math.max(0, Math.min(gs.maxMp, gs.mp));
+    
     this.onStateUpdate({ ...gs, cooldowns: { ...this.cooldowns }, potionCooldowns: { ...this.potionCooldowns }, nearNPC: this.nearNPC, nearChest: this.nearChest, nearNode: this.nearNode, playerWorldX: this.px, playerWorldY: this.py });
   }
 
@@ -515,12 +522,15 @@ export class GameEngine {
         const gs = this.gameState;
         const totalAtk = (gs.classData?.baseStats?.attack || 22) + (gs.equipStats?.attack || 0);
         const dmg = Math.max(1, Math.floor(totalAtk * (0.25 + Math.random() * 0.1)) - Math.floor(e.def * 0.5));
-        e.hp -= dmg;
+        const hpBefore = e.hp;
+        e.hp = Math.max(0, e.hp - dmg);
         e.hitFlash = 0.15;
+        console.log(`[PLAYER_ATTACK] vs ${e.name}: ${dmg} dmg | ${hpBefore.toFixed(1)} → ${e.hp.toFixed(1)} | Dead: ${e.hp <= 0}`);
         this.damageNumbers.push({ x: e.x + (Math.random() - 0.5) * 20, y: e.y - 20, text: `-${dmg}`, color: '#ffffff', life: 1.0 });
         this.effects.push({ x: e.x, y: e.y, radius: 16, life: 0.25, maxLife: 0.25, color: gs.classData?.color || '#ffffff' });
         if (e.hp <= 0) {
           e.dead = true;
+          e.deathTimer = 0.6; // fade-out timer
           this.autoAttackTarget = null;
           this._gainXP(e.xp);
           this.gameState.kills = (this.gameState.kills || 0) + 1;
@@ -752,11 +762,15 @@ export class GameEngine {
     }
     if (type === 'hp') {
       const restore = Math.floor(gs.maxHp * 0.35);
-      gs.hp = Math.min(gs.maxHp, gs.hp + restore);
+      const hpBefore = gs.hp;
+      gs.hp = Math.max(0, Math.min(gs.maxHp, gs.hp + restore));
+      console.log(`[HEAL] HP Potion: +${restore} | ${hpBefore.toFixed(1)} → ${gs.hp.toFixed(1)}`);
       this.damageNumbers.push({ x: this.px, y: this.py - 40, text: `+${restore} HP`, color: '#ff4444', life: 1.5, big: false });
     } else {
       const restore = Math.floor(gs.maxMp * 0.50);
-      gs.mp = Math.min(gs.maxMp, gs.mp + restore);
+      const mpBefore = gs.mp;
+      gs.mp = Math.max(0, Math.min(gs.maxMp, gs.mp + restore));
+      console.log(`[HEAL] MP Potion: +${restore} | ${mpBefore.toFixed(1)} → ${gs.mp.toFixed(1)}`);
       this.damageNumbers.push({ x: this.px, y: this.py - 40, text: `+${restore} MP`, color: '#4a9eff', life: 1.5, big: false });
     }
     this.potionCooldowns[type] = this.POTION_CD;
