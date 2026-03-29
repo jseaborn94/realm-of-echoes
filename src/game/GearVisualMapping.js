@@ -8,32 +8,105 @@
 import { EQUIPMENT_SPRITES, getTerrainSprite } from './CompleteAssetRegistry.js';
 
 /**
- * Class-specific gear positioning and scaling
- * Archer: lighter, more refined armor
- * Warrior: heavy, chunky armor
- * Lancer: elongated, pole-weapon focused
- * Monk: light, minimal gear
+ * Anchor-point based gear positioning system
+ * Per-class, per-slot, per-animation-state alignment
+ * Prevents floating, clipping, and drift during movement
+ * 
+ * offsetX: horizontal offset (0 = center on character)
+ * offsetY: vertical offset (negative = above character)
+ * scale: size multiplier relative to character
  */
-const CLASS_GEAR_CONFIG = {
+const GEAR_ANCHOR_POINTS = {
   archer: {
-    helmet: { scale: 0.75, offsetY: -26 },
-    chest: { scale: 0.85, offsetY: -10 },
-    weapon: { scale: 0.8, offsetY: 0 },
+    helmet: {
+      idle:   { offsetX: 0, offsetY: -26, scale: 0.75 },
+      move:   { offsetX: 0, offsetY: -25, scale: 0.75 },
+      attack: { offsetX: 2, offsetY: -27, scale: 0.75 },
+    },
+    chest: {
+      idle:   { offsetX: 0, offsetY: -10, scale: 0.85 },
+      move:   { offsetX: 0, offsetY: -9, scale: 0.85 },
+      attack: { offsetX: 1, offsetY: -11, scale: 0.85 },
+    },
+    weapon: {
+      idle:   { offsetX: 6, offsetY: 2, scale: 0.8, flipWithChar: true },
+      move:   { offsetX: 5, offsetY: 3, scale: 0.8, flipWithChar: true },
+      attack: { offsetX: 8, offsetY: -4, scale: 0.85, flipWithChar: true },
+    },
+    shield: {
+      idle:   { offsetX: -8, offsetY: 0, scale: 0.75, flipWithChar: true },
+      move:   { offsetX: -7, offsetY: 1, scale: 0.75, flipWithChar: true },
+      attack: { offsetX: -6, offsetY: -2, scale: 0.75, flipWithChar: true },
+    },
   },
+
   warrior: {
-    helmet: { scale: 0.95, offsetY: -24 },
-    chest: { scale: 1.1, offsetY: -8 },
-    weapon: { scale: 1.0, offsetY: -2 },
+    helmet: {
+      idle:   { offsetX: 0, offsetY: -24, scale: 0.95 },
+      move:   { offsetX: 0, offsetY: -23, scale: 0.95 },
+      attack: { offsetX: 1, offsetY: -25, scale: 0.95 },
+    },
+    chest: {
+      idle:   { offsetX: 0, offsetY: -8, scale: 1.1 },
+      move:   { offsetX: 0, offsetY: -7, scale: 1.1 },
+      attack: { offsetX: 0, offsetY: -9, scale: 1.1 },
+    },
+    weapon: {
+      idle:   { offsetX: 8, offsetY: 0, scale: 1.0, flipWithChar: true },
+      move:   { offsetX: 7, offsetY: 2, scale: 1.0, flipWithChar: true },
+      attack: { offsetX: 10, offsetY: -6, scale: 1.05, flipWithChar: true },
+    },
+    shield: {
+      idle:   { offsetX: -10, offsetY: 0, scale: 0.95, flipWithChar: true },
+      move:   { offsetX: -9, offsetY: 2, scale: 0.95, flipWithChar: true },
+      attack: { offsetX: -8, offsetY: -4, scale: 0.95, flipWithChar: true },
+    },
   },
+
   lancer: {
-    helmet: { scale: 0.8, offsetY: -25 },
-    chest: { scale: 0.9, offsetY: -9 },
-    weapon: { scale: 1.15, offsetY: 4 }, // Spears are longer
+    helmet: {
+      idle:   { offsetX: 0, offsetY: -25, scale: 0.8 },
+      move:   { offsetX: 0, offsetY: -24, scale: 0.8 },
+      attack: { offsetX: 1, offsetY: -26, scale: 0.8 },
+    },
+    chest: {
+      idle:   { offsetX: 0, offsetY: -9, scale: 0.9 },
+      move:   { offsetX: 0, offsetY: -8, scale: 0.9 },
+      attack: { offsetX: 0, offsetY: -10, scale: 0.9 },
+    },
+    weapon: {
+      idle:   { offsetX: 4, offsetY: 8, scale: 1.15, flipWithChar: true }, // Spears are longer, positioned lower
+      move:   { offsetX: 3, offsetY: 10, scale: 1.15, flipWithChar: true },
+      attack: { offsetX: 6, offsetY: 0, scale: 1.2, flipWithChar: true }, // Extended for thrust
+    },
+    shield: {
+      idle:   { offsetX: -8, offsetY: 0, scale: 0.85, flipWithChar: true },
+      move:   { offsetX: -7, offsetY: 1, scale: 0.85, flipWithChar: true },
+      attack: { offsetX: -6, offsetY: -3, scale: 0.85, flipWithChar: true },
+    },
   },
+
   monk: {
-    helmet: { scale: 0.7, offsetY: -27 },
-    chest: { scale: 0.75, offsetY: -12 },
-    weapon: { scale: 0.85, offsetY: -1 },
+    helmet: {
+      idle:   { offsetX: 0, offsetY: -27, scale: 0.7 },
+      move:   { offsetX: 0, offsetY: -26, scale: 0.7 },
+      attack: { offsetX: 1, offsetY: -28, scale: 0.7 },
+    },
+    chest: {
+      idle:   { offsetX: 0, offsetY: -12, scale: 0.75 },
+      move:   { offsetX: 0, offsetY: -11, scale: 0.75 },
+      attack: { offsetX: 0, offsetY: -13, scale: 0.75 },
+    },
+    weapon: {
+      idle:   { offsetX: 5, offsetY: 0, scale: 0.85, flipWithChar: true },
+      move:   { offsetX: 4, offsetY: 1, scale: 0.85, flipWithChar: true },
+      attack: { offsetX: 7, offsetY: -3, scale: 0.9, flipWithChar: true },
+    },
+    shield: {
+      idle:   { offsetX: -6, offsetY: 0, scale: 0.7, flipWithChar: true },
+      move:   { offsetX: -5, offsetY: 1, scale: 0.7, flipWithChar: true },
+      attack: { offsetX: -5, offsetY: -2, scale: 0.7, flipWithChar: true },
+    },
   },
 };
 
@@ -110,27 +183,29 @@ function getShieldSprite() {
 
 /**
  * Map an equipped item to a visual sprite and rendering config
- * Returns { spriteUrl, scale, offsetY, flipWithChar }
+ * Returns { spriteUrl, scale, offsetX, offsetY, flipWithChar }
+ * Uses anchor points for per-class, per-state alignment
  */
-export function mapGearVisual(slot, item, classId = 'warrior') {
+export function mapGearVisual(slot, item, classId = 'warrior', animState = 'idle') {
   if (!item) return null;
 
-  const classConfig = CLASS_GEAR_CONFIG[classId] || CLASS_GEAR_CONFIG.warrior;
-  const config = classConfig[slot];
+  // Get anchor points for this class/slot/animation state
+  const classAnchors = GEAR_ANCHOR_POINTS[classId] || GEAR_ANCHOR_POINTS.warrior;
+  const slotAnchors = classAnchors[slot];
   
-  if (!config) return null; // Unsupported slot
+  if (!slotAnchors) return null; // Unsupported slot
+
+  // Get anchor for this animation state (fallback to idle if not found)
+  const anchor = slotAnchors[animState] || slotAnchors.idle;
 
   let spriteUrl = null;
-  let scale = config.scale;
-  let offsetY = config.offsetY;
-  let flipWithChar = false;
+  let flipWithChar = anchor.flipWithChar || false;
 
   // Determine sprite based on slot
   if (slot === 'weapon') {
     const weaponType = getWeaponType(item);
     const rarity = getItemRarity(item);
     spriteUrl = getWeaponSprite(weaponType, rarity);
-    flipWithChar = true; // Weapons follow character facing
   } else if (slot === 'helmet' || slot === 'head') {
     const rarity = getItemRarity(item);
     spriteUrl = getHelmetSprite(rarity);
@@ -139,7 +214,6 @@ export function mapGearVisual(slot, item, classId = 'warrior') {
     spriteUrl = getChestSprite(rarity);
   } else if (slot === 'shield' || slot === 'offhand') {
     spriteUrl = getShieldSprite();
-    flipWithChar = true;
   }
 
   // If no sprite found, try to find a reasonable fallback
@@ -149,8 +223,9 @@ export function mapGearVisual(slot, item, classId = 'warrior') {
 
   return {
     spriteUrl,
-    scale,
-    offsetY,
+    scale: anchor.scale,
+    offsetX: anchor.offsetX,
+    offsetY: anchor.offsetY,
     flipWithChar,
     slot,
     itemName: item.name || 'Unknown',
@@ -176,7 +251,7 @@ export function normalizeItemForGear(item) {
  * Get all visual mappings for equipped items
  * Returns { weapon: {...}, helmet: {...}, chest: {...}, ... }
  */
-export function getEquippedVisuals(equipped, classId = 'warrior') {
+export function getEquippedVisuals(equipped, classId = 'warrior', animState = 'idle') {
   if (!equipped) return {};
 
   const visuals = {};
@@ -186,7 +261,7 @@ export function getEquippedVisuals(equipped, classId = 'warrior') {
     const item = equipped[slot];
     if (!item) continue;
 
-    const visual = mapGearVisual(slot, item, classId);
+    const visual = mapGearVisual(slot, item, classId, animState);
     if (visual) {
       visuals[slot] = visual;
     }

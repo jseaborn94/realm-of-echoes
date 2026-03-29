@@ -39,16 +39,16 @@ export class EquipmentRenderer {
    * @param {number} screenY - Bottom Y (feet)
    * @param {object} equipped - { weapon, helmet, chest, shield, ... }
    * @param {string} classId - Character class (warrior, archer, lancer, monk)
-   * @param {string} action - Animation state (idle, run, attack, death)
+   * @param {string} animState - Animation state (idle, move, attack)
    * @param {number} flipX - Direction (1 or -1)
    */
-  async drawEquipment(ctx, screenX, screenY, equipped, classId = 'warrior', action = 'idle', flipX = 1) {
+  async drawEquipment(ctx, screenX, screenY, equipped, classId = 'warrior', animState = 'idle', flipX = 1) {
     if (!equipped) return;
 
-    // Get all visual mappings using gear visual system
-    const visuals = getEquippedVisuals(equipped, classId);
+    // Get all visual mappings using gear visual system with animation state
+    const visuals = getEquippedVisuals(equipped, classId, animState);
 
-    // Render order: helmet → chest → weapon (overlays on top)
+    // Render order: helmet → chest → weapon → shield (overlays on top)
     const renderOrder = ['helmet', 'chest', 'weapon', 'shield'];
 
     for (const slot of renderOrder) {
@@ -61,13 +61,15 @@ export class EquipmentRenderer {
 
         ctx.save();
 
-        // Position relative to character using class-aware offsets
-        const x = screenX + visual.offsetY * 0.2;
-        const y = screenY + visual.offsetY;
+        // Apply anchor-point positioning (offsetX, offsetY)
+        let x = screenX + visual.offsetX;
+        let y = screenY + visual.offsetY;
         const scale = visual.scale;
 
-        // Flip with character if applicable
+        // Flip horizontally with character if applicable
         if (visual.flipWithChar && flipX === -1) {
+          // Mirror horizontally: negate offsetX for proper hand/side positioning
+          x = screenX - visual.offsetX;
           ctx.translate(x, y);
           ctx.scale(-1, 1);
           ctx.drawImage(img, -img.width * scale / 2, -img.height * scale / 2, img.width * scale, img.height * scale);
