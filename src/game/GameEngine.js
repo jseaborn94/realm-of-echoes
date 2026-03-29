@@ -464,9 +464,6 @@ export class GameEngine {
     // Effects - use sprite-based rendering
     this.effects = this.effects.filter(e => {
       e.life -= dt;
-      if (e.life <= 0) {
-        assetIntegration.removeAnimation(e.id || `effect_${Math.random()}`);
-      }
       return e.life > 0;
     });
 
