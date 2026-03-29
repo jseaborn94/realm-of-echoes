@@ -5,6 +5,7 @@ import { canEquipIntoSlot, normalizeItem } from '../../game/ItemSystem.js';
 import { calculatePlayerStats, getEquipmentBonuses, STAT_DISPLAY_INFO, formatStatValue } from '../../game/StatsCalculator.js';
 import ItemTooltip from './ItemTooltip.jsx';
 import IconRenderer from './IconRenderer.jsx';
+import CharacterPreview from './CharacterPreview.jsx';
 
 const SLOT_POSITIONS = {
   weapon:  { top: '45%', left: '5%' },
@@ -121,17 +122,24 @@ export default function EquipmentPanel({ gameState, equipped, onEquip, onUnequip
 
   return (
     <div className="flex flex-col gap-4 h-full">
-      {/* Character Sheet */}
+      {/* Character Sheet with Preview */}
       <div className="p-4 rounded-lg" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,232,138,0.15)' }}>
         <div className="font-cinzel text-xs mb-3" style={{ color: '#6a5a3a' }}>CHARACTER</div>
-        <div className="flex items-center gap-3">
-          <div className="relative w-24 h-24 flex items-center justify-center rounded-lg"
-            style={{ background: `linear-gradient(135deg, ${classColor}20, ${classColor}10)`, border: `2px solid ${classColor}` }}>
-            <div className="text-5xl">{gameState.classData?.icon}</div>
+        <div className="flex items-start gap-4">
+          {/* Paper doll preview */}
+          <div className="relative flex-shrink-0">
+            <CharacterPreview 
+              gameState={gameState} 
+              equipped={equipped} 
+              size={160} 
+              animState="idle"
+            />
           </div>
-          <div>
+          
+          {/* Character info */}
+          <div className="flex-1">
             <div className="font-cinzel font-bold text-sm" style={{ color: '#ffe88a' }}>{gameState.playerName}</div>
-            <div className="font-cinzel text-xs mb-2" style={{ color: '#6a5a3a' }}>Lv. {gameState.level} {gameState.classData?.name}</div>
+            <div className="font-cinzel text-xs mb-3" style={{ color: '#6a5a3a' }}>Lv. {gameState.level} {gameState.classData?.name}</div>
             <div className="space-y-1">
               {displayStats.map(s => {
                 const bonus = bonuses[s.key] || 0;
