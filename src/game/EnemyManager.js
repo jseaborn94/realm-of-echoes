@@ -38,6 +38,9 @@ export const ENEMY_TYPES = {
 
   // ── BOSS ──
   ogre:        { name: 'Ogre',         tier: 'boss',     color: '#7f8c8d', icon: '👹', hp: 1200, atk: 70, def: 20, speed: 38, xp: 500, range: 50, lootMult: 5.0 },
+
+  // ── TRAINING DUMMY (GM testing) ──
+  dummy:       { name: 'Training Dummy', tier: 'dummy',   color: '#888888', icon: '🎯', hp: 1000, atk: 0, def: 0, speed: 0, xp: 0, range: 0, lootMult: 0 },
 };
 
 // ─── Zone enemy tables ────────────────────────────────────────────────────────
@@ -292,10 +295,11 @@ export class EnemyManager {
     const def = ENEMY_TYPES[type];
     if (!def) return;
 
+    const isDummy    = def.tier === 'dummy';
     const isBoss     = def.tier === 'boss';
     const isElite    = def.tier === 'elite';
     const isMiniboss = def.tier === 'miniboss';
-    const isNormalLeader = isLeader && !isElite && !isMiniboss && !isBoss;
+    const isNormalLeader = isLeader && !isElite && !isMiniboss && !isBoss && !isDummy;
 
     const zoneScale   = 1 + (zoneId - 1) * 0.12;
     const leaderScale = isNormalLeader ? 1.2 : 1.0;
@@ -324,16 +328,17 @@ export class EnemyManager {
       tier: def.tier,
       isLeader: isNormalLeader,
       xp: Math.floor(def.xp * zoneScale * leaderScale),
-      state: 'idle',
+      state: isDummy ? 'dummy' : 'idle',
       attackCooldown: 0,
       chargeCooldown: 0,
       // Alert radii: melee/ranged see player from closer; elite/boss from further
-      alertRadius: isBoss ? 320 : isMiniboss ? 280 : isElite ? 240 : 190,
+      alertRadius: isBoss ? 320 : isMiniboss ? 280 : isElite ? 240 : isDummy ? 0 : 190,
       projectiles: (def.tier === 'ranged' || (def.tier === 'miniboss' && def.projectileColor)) ? [] : undefined,
       projectileColor: def.projectileColor,
       hitFlash: 0,
-       dead: false,
-       deathTimer: null,
+      dead: false,
+      deathTimer: null,
+      isInvulnerable: isDummy,
     });
   }
 
@@ -668,17 +673,35 @@ export class EnemyManager {
 
       const raw = Math.floor(totalAtk * baseMult * lvlBonus);
       const dmg = Math.max(1, raw - Math.floor(e.def * 0.5));
-      e.hp -= dmg;
-      e.hitFlash = 0.15;
-      // Skills hitting an enemy also trigger camp aggro
-      if (e.state === 'idle') { e.state = 'chase'; this._triggerCampAggro(e, px, py); }
-      results.push({ x: e.x, y: e.y, dmg, killed: e.hp <= 0 });
-       if (e.hp <= 0) {
-         e.dead = true;
-         e.deathTimer = 0.6; // 0.6s fade-out before removal
-       }
+      
+      // Don't damage invulnerable dummy
+      if (e.isInvulnerable) {
+        e.hitFlash = 0.15; // still show hit indicator
+        results.push({ x: e.x, y: e.y, dmg: 0, killed: false });
+      } else {
+        e.hp -= dmg;
+        e.hitFlash = 0.15;
+        // Skills hitting an enemy also trigger camp aggro
+        if (e.state === 'idle') { e.state = 'chase'; this._triggerCampAggro(e, px, py); }
+        results.push({ x: e.x, y: e.y, dmg, killed: e.hp <= 0 });
+        if (e.hp <= 0) {
+          e.dead = true;
+          e.deathTimer = 0.6; // 0.6s fade-out before removal
+        }
+      }
     }
     return results;
+  }
+
+  // Public method for spawning dummy via GM panel
+  spawnEnemy(x, y, type) {
+    const col = Math.floor(x / TILE_SIZE);
+    const row = Math.floor(y / TILE_SIZE);
+    const zoneId = 1;
+    const bounds = [0, 499, 0, 499];
+    if (!this._isBadSpawn(col, row)) {
+      this._spawnAt(type, col, row, bounds, zoneId);
+    }
   }
 
   draw(ctx, camX, camY, playerSX, playerSY, fogRadiusWorld) {

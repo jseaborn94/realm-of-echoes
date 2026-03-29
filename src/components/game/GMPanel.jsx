@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X } from 'lucide-react';
+import { getSkillsByClass, isSkillUnlocked } from '@/game/SkillSystem.js';
 
 /**
  * Hidden admin/GM testing panel
@@ -20,6 +21,7 @@ export default function GMPanel({
   const [expandedSections, setExpandedSections] = useState({
     player: true,
     inventory: true,
+    skills: false,
     enemies: false,
     world: false,
     loot: false,
@@ -171,6 +173,45 @@ export default function GMPanel({
     updateState({ _debugGear: !gameState._debugGear });
   };
 
+  // Skills section handlers
+  const unlockAllSkills = () => {
+    const classId = gameState.classData?.id || 'warrior';
+    const skills = getSkillsByClass(classId);
+    const skillLevels = {};
+    skills.forEach(s => { skillLevels[s.key] = 5; }); // Max level for now
+    updateState({ skillLevels });
+  };
+
+  const resetSkillCooldowns = () => {
+    if (gameEngine) {
+      gameEngine.cooldowns = { Q: 0, W: 0, E: 0, R: 0 };
+      updateState({ cooldowns: { ...gameEngine.cooldowns } });
+    }
+  };
+
+  const restoreMana = () => {
+    updateState({ mp: gameState.maxMp });
+  };
+
+  const spawnTrainingDummy = () => {
+    if (gameEngine && gameEngine.enemyManager) {
+      gameEngine.enemyManager.spawnEnemy(
+        gameEngine.px + 80,
+        gameEngine.py,
+        'dummy'
+      );
+    }
+  };
+
+  const toggleDummyInvulnerable = () => {
+    if (gameEngine && gameEngine.enemyManager) {
+      const dummy = gameEngine.enemyManager.enemies.find(e => e.type === 'dummy');
+      if (dummy) {
+        dummy.isInvulnerable = !dummy.isInvulnerable;
+      }
+    }
+  };
+
   return (
     <div
       ref={panelRef}
@@ -274,9 +315,54 @@ export default function GMPanel({
         </div>
       </Section>
 
+      {/* Skills Section */}
+      <Section
+        title="🎯 SKILLS TESTING"
+        expanded={expandedSections.skills}
+        onToggle={() => toggleSection('skills')}
+      >
+        <div className="space-y-1">
+          <div className="text-yellow-300">
+            Mana: {gameState.mp.toFixed(0)}/{gameState.maxMp}
+          </div>
+          <div className="grid grid-cols-2 gap-1">
+            <Button onClick={unlockAllSkills}>Unlock All</Button>
+            <Button onClick={resetSkillCooldowns}>Reset CDs</Button>
+            <Button onClick={restoreMana}>Restore Mana</Button>
+            <Button onClick={spawnTrainingDummy}>+Dummy</Button>
+          </div>
+          
+          {/* Dummy controls */}
+          {gameEngine?.enemyManager?.enemies?.some(e => e.type === 'dummy') && (
+            <div className="mt-2 pt-2 border-t border-yellow-600/30">
+              <div className="text-yellow-400 text-xs font-bold mb-1">Dummy:</div>
+              <Button onClick={toggleDummyInvulnerable}>Toggle Invulnerable</Button>
+            </div>
+          )}
+
+          {/* Skill unlock milestones */}
+          <div className="mt-2 pt-2 border-t border-yellow-600/30">
+            <div className="text-yellow-400 text-xs font-bold mb-1">Unlocks:</div>
+            {(() => {
+              const classId = gameState.classData?.id || 'warrior';
+              const skills = getSkillsByClass(classId);
+              const nextUnlock = skills.find(s => !isSkillUnlocked(s, gameState.level));
+              if (nextUnlock) {
+                return (
+                  <div className="text-yellow-200 text-xs">
+                    {nextUnlock.key}: {nextUnlock.name} (Lvl {nextUnlock.unlocksAt})
+                  </div>
+                );
+              }
+              return <div className="text-gray-500 text-xs">All skills unlocked</div>;
+            })()}
+          </div>
+        </div>
+      </Section>
+
       {/* Enemies Section */}
       <Section
-        title="3. ENEMIES"
+       title="4. ENEMIES"
         expanded={expandedSections.enemies}
         onToggle={() => toggleSection('enemies')}
       >
@@ -292,7 +378,7 @@ export default function GMPanel({
 
       {/* World Section */}
       <Section
-        title="4. WORLD"
+       title="5. WORLD"
         expanded={expandedSections.world}
         onToggle={() => toggleSection('world')}
       >
@@ -305,7 +391,7 @@ export default function GMPanel({
 
       {/* Loot / Balance Section */}
       <Section
-        title="5. LOOT / BALANCE"
+       title="6. LOOT / BALANCE"
         expanded={expandedSections.loot}
         onToggle={() => toggleSection('loot')}
       >
@@ -319,7 +405,7 @@ export default function GMPanel({
 
       {/* Visual / Debug Section */}
       <Section
-        title="6. VISUAL / DEBUG"
+       title="7. VISUAL / DEBUG"
         expanded={expandedSections.visual}
         onToggle={() => toggleSection('visual')}
       >

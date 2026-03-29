@@ -335,6 +335,7 @@ export default {
   getSkillsByClass,
   getSkillByKey,
   calculateSkillDamage,
+  isSkillUnlocked,
   canCastSkill,
   getTargetingConfig,
   keyToAbilityIndex,
