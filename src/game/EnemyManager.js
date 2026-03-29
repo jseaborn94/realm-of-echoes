@@ -754,7 +754,6 @@ export class EnemyManager {
     }
 
     // Draw enemy sprite from registry (async, but don't await in draw loop)
-    const { assetIntegration } = require('./AssetIntegration.js');
     const enemyType = e.type || 'goblin';
     const action = e.moving ? 'run' : e.attacking ? 'attack' : 'idle';
     assetIntegration.drawEnemySprite(ctx, enemyType, sx, sy, action, e.facingLeft ? -1 : 1).catch(() => {
