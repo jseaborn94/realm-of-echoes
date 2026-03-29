@@ -86,12 +86,13 @@ function EquipSlot({ slot, item, onDrop, onUnequip, isWarrior, classId }) {
 function InvItem({ item, onEquip, onUse, classId }) {
   const [showTip, setShowTip] = useState(false);
   const offClass = isOffClassWeapon(item, classId);
+  const [isDragging, setIsDragging] = useState(false);
 
   if (item.isResource) {
     // Resource / consumable stacked item
     const isConsumable = !!item.useEffect;
     return (
-      <div
+      <motion.div
         className="relative inv-slot has-item rounded-lg flex flex-col items-center justify-center w-14 h-14 cursor-default"
         style={{ borderColor: RARITY_COLORS[item.rarity] + '60' }}
         onMouseEnter={() => setShowTip(true)}
@@ -120,21 +121,26 @@ function InvItem({ item, onEquip, onUse, classId }) {
             {!isConsumable && <div className="text-xs mt-1" style={{ color: '#5a4a2a' }}>Crafting material</div>}
           </div>
         )}
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div
+    <motion.div
       className="relative inv-slot has-item rounded-lg flex items-center justify-center w-14 h-14"
       draggable={!offClass}
       onDragStart={e => {
         if (offClass) { e.preventDefault(); return; }
+        setIsDragging(true);
+        e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('application/json', JSON.stringify(item));
       }}
+      onDragEnd={() => setIsDragging(false)}
       onDoubleClick={() => !offClass && onEquip(item)}
       onMouseEnter={() => setShowTip(true)}
       onMouseLeave={() => setShowTip(false)}
+      animate={{ opacity: isDragging ? 0.5 : 1, scale: isDragging ? 0.9 : 1 }}
+      transition={{ duration: 0.1 }}
       style={{
         borderColor: offClass ? '#ff444440' : RARITY_COLORS[item.rarity] + '60',
         cursor: offClass ? 'not-allowed' : 'grab',
@@ -147,7 +153,7 @@ function InvItem({ item, onEquip, onUse, classId }) {
         style={{ fontSize: '7px', color: offClass ? '#ff6644' : RARITY_COLORS[item.rarity], background: 'rgba(0,0,0,0.6)', borderRadius: '0 0 6px 6px' }}>
         {offClass ? 'N/A' : item.rarity.slice(0, 3).toUpperCase()}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -238,8 +244,25 @@ export default function InventoryPanel({ gameState, onClose, onEquip, onUnequip,
               <div className="font-cinzel text-xs mb-3" style={{ color: '#6a5a3a' }}>
                 BACKPACK ({bagItems.length} items)
               </div>
-              <div className="grid grid-cols-5 gap-2 p-4 rounded-lg min-h-64"
-                style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div
+                className="grid grid-cols-5 gap-2 p-4 rounded-lg min-h-64"
+                style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}
+                onDragOver={e => e.preventDefault()}
+                onDrop={e => {
+                  e.preventDefault();
+                  try {
+                    const itemData = JSON.parse(e.dataTransfer.getData('application/json'));
+                    // If dropping an equipped item back to bag, unequip it
+                    const wasEquipped = Object.values(equipped).some(eq => eq?.id === itemData.id);
+                    if (wasEquipped) {
+                      const slotKey = Object.keys(equipped).find(k => equipped[k]?.id === itemData.id);
+                      onUnequip(itemData, slotKey);
+                    }
+                  } catch (err) {
+                    console.error('Backpack drop error:', err);
+                  }
+                }}
+              >
                 {bagItems.map(item => (
                   <InvItem key={item.id} item={item} classId={classId} onEquip={i => onEquip(i, i.slot)} onUse={onUseItem} />
                 ))}
@@ -250,7 +273,7 @@ export default function InventoryPanel({ gameState, onClose, onEquip, onUnequip,
                 )}
               </div>
               <p className="mt-3 text-xs" style={{ color: '#3a2a1a', fontFamily: 'Crimson Text, serif' }}>
-                💡 Drag items to equip slots on the left, or double-click to auto-equip/unequip
+                💡 Drag items to equip slots on the left, or drag equipped items back to unequip
               </p>
             </div>
           </div>

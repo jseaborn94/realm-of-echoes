@@ -49,46 +49,81 @@ function ItemTooltip({ item, isOffClass }) {
   );
 }
 
+function isValidSlot(itemSlot, targetSlot) {
+  // Handle ring slots — items with slot 'ring' can go into ring1 or ring2
+  if (itemSlot === 'ring' && (targetSlot === 'ring1' || targetSlot === 'ring2')) return true;
+  // Exact match for all other slots
+  return itemSlot === targetSlot;
+}
+
 function EquipmentSlot({ slotKey, item, onDrop, onUnequip, classId }) {
   const [showTip, setShowTip] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [isValidDrag, setIsValidDrag] = useState(false);
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    try {
+      const itemData = JSON.parse(e.dataTransfer.getData('application/json'));
+      const isValid = isValidSlot(itemData.slot, slotKey);
+      setDragOver(true);
+      setIsValidDrag(isValid);
+    } catch {
+      setDragOver(false);
+      setIsValidDrag(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    setIsValidDrag(false);
+    try {
+      const itemData = JSON.parse(e.dataTransfer.getData('application/json'));
+      if (isValidSlot(itemData.slot, slotKey)) {
+        onDrop(itemData, slotKey);
+      }
+    } catch (err) {
+      console.error('Drop error:', err);
+    }
+  };
 
   return (
     <motion.div
       whileHover={{ scale: 1.08 }}
       className="relative w-16 h-16 inv-slot equip-slot rounded-lg flex items-center justify-center cursor-pointer transition-all"
       style={{
-        borderColor: dragOver ? 'rgba(255,232,138,0.8)' : item ? RARITY_COLORS[item.rarity] + '80' : 'rgba(255,232,138,0.2)',
-        background: dragOver ? 'rgba(255,232,138,0.1)' : item ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.2)',
-        boxShadow: item ? `inset 0 0 12px ${RARITY_COLORS[item.rarity]}40` : 'none',
+        borderColor: dragOver && isValidDrag ? '#4caf50' : dragOver && !isValidDrag ? '#ff6644' : item ? RARITY_COLORS[item.rarity] + '80' : 'rgba(255,232,138,0.2)',
+        background: dragOver && isValidDrag ? 'rgba(76,175,80,0.15)' : dragOver && !isValidDrag ? 'rgba(255,100,68,0.1)' : item ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.2)',
+        boxShadow: dragOver && isValidDrag ? '0 0 16px rgba(76,175,80,0.4), inset 0 0 12px rgba(76,175,80,0.2)' : item ? `inset 0 0 12px ${RARITY_COLORS[item.rarity]}40` : 'none',
       }}
       onMouseEnter={() => setShowTip(true)}
-      onMouseLeave={() => { setShowTip(false); setDragOver(false); }}
-      onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={e => {
-        e.preventDefault();
-        setDragOver(false);
-        const itemData = JSON.parse(e.dataTransfer.getData('application/json'));
-        if (itemData.slot === slotKey) onDrop(itemData, slotKey);
-      }}
+      onMouseLeave={() => { setShowTip(false); setDragOver(false); setIsValidDrag(false); }}
+      onDragOver={handleDragOver}
+      onDragLeave={() => { setDragOver(false); setIsValidDrag(false); }}
+      onDrop={handleDrop}
       onDoubleClick={() => item && onUnequip(item, slotKey)}
       title={item ? `Double-click to unequip` : `${SLOT_LABELS[slotKey]} slot`}
     >
-      {item ? (
-        <>
-          <span style={{ fontSize: '28px' }}>{item.icon}</span>
-          {showTip && <ItemTooltip item={item} />}
-          <div className="absolute bottom-1 right-1 left-1 text-center"
-            style={{ fontSize: '6px', color: RARITY_COLORS[item.rarity], textTransform: 'uppercase', fontWeight: 'bold' }}>
-            {item.rarity.slice(0, 3)}
+      <motion.div
+        animate={{ scale: dragOver && isValidDrag ? 1.1 : 1 }}
+        transition={{ duration: 0.1 }}
+      >
+        {item ? (
+          <>
+            <span style={{ fontSize: '28px' }}>{item.icon}</span>
+            {showTip && <ItemTooltip item={item} />}
+            <div className="absolute bottom-1 right-1 left-1 text-center"
+              style={{ fontSize: '6px', color: RARITY_COLORS[item.rarity], textTransform: 'uppercase', fontWeight: 'bold' }}>
+              {item.rarity.slice(0, 3)}
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center gap-1 opacity-40">
+            <span style={{ fontSize: '24px' }}>{SLOT_ICONS[slotKey]}</span>
           </div>
-        </>
-      ) : (
-        <div className="flex flex-col items-center gap-1 opacity-40">
-          <span style={{ fontSize: '24px' }}>{SLOT_ICONS[slotKey]}</span>
-        </div>
-      )}
+        )}
+      </motion.div>
     </motion.div>
   );
 }
