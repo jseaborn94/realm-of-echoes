@@ -10,6 +10,8 @@ import { TargetingSystem } from './TargetingSystem.js'; // v2
 import { assetIntegration } from './AssetIntegration.js';
 import { equipmentRenderer } from './EquipmentRenderer.js';
 import { skillFX } from './SkillFX.js';
+import { getSkillByKey, calculateSkillDamage, canCastSkill } from './SkillSystem.js';
+import { SkillExecutor } from './SkillExecutor.js';
 
 export class GameEngine {
   constructor(canvas, gameState, onStateUpdate) {
@@ -21,6 +23,7 @@ export class GameEngine {
     this.world = new WorldGenerator();
     this.enemyManager = new EnemyManager(this.world);
     this.gatheringSystem = new GatheringSystem(this.world);
+    this.skillExecutor = new SkillExecutor(this);
     this.keys = {};
     this.running = false;
     this.lastTime = 0;
@@ -217,45 +220,132 @@ export class GameEngine {
     this.canvas.removeEventListener('contextmenu', this._onContextMenu);
   }
 
-  // Called on skill key press — validates then either enters aiming or instant-casts (self_aoe)
+  // Called on skill key press — validates then either enters aiming or instant-casts
   _beginSkill(key) {
     const gs = this.gameState;
-    if (this.cooldowns[key] > 0) return;
-    if (key === 'R' && gs.level < 6) {
-      this.damageNumbers.push({ x: this.px, y: this.py - 30, text: 'Unlock R at Level 6!', color: '#aaaaaa', life: 1.5 });
-      return;
-    }
-    if (key !== 'R') {
-      const skillLevel = gs.skillLevels?.[key] || 0;
-      if (skillLevel === 0) {
-        this.damageNumbers.push({ x: this.px, y: this.py - 30, text: `${key} locked — invest a skill point!`, color: '#aaaaaa', life: 1.5 });
-        return;
-      }
-    }
-    const abilities = gs.classData?.abilities || [];
-    const keyMap = { Q: 0, W: 1, E: 2, R: 3 };
-    const ability = abilities[keyMap[key]];
-    if (!ability) return;
-    const cost = ability.mpCost || 0;
-    if (gs.mp < cost) {
-      this.damageNumbers.push({ x: this.px, y: this.py - 30, text: 'No MP!', color: '#4a9eff', life: 1.5 });
+    const classId = gs.classData?.id || 'warrior';
+    
+    // Get skill from new data-driven system
+    const skill = getSkillByKey(classId, key);
+    if (!skill) return;
+
+    // Check cooldown
+    if (this.cooldowns[key] > 0) {
+      this.damageNumbers.push({ 
+        x: this.px, y: this.py - 30, 
+        text: `${(this.cooldowns[key] / 1000).toFixed(1)}s cooldown`, 
+        color: '#aaaaaa', life: 1.0 
+      });
       return;
     }
 
-    // Try to start aiming — if targeting returns true, aiming mode is active
-    const entered = this.targeting.startAiming(key, gs.classData?.id);
+    // Check mana
+    if (!canCastSkill(skill, gs)) {
+      this.damageNumbers.push({ 
+        x: this.px, y: this.py - 30, 
+        text: `${skill.manaCost} mana needed!`, 
+        color: '#ff6688', life: 1.5 
+      });
+      return;
+    }
+
+    // Try to start aiming based on castType
+    const config = this._getTargetingConfig(skill);
+    const entered = this.targeting.startAiming(key, classId, config);
 
     if (entered) {
-      // For self_aoe: targeting.confirmed is already true, execute immediately
-      if (this.targeting.confirmed) {
-        this._executeSkill(key, this.px, this.py);
+      // For self_buff: execute immediately
+      if (skill.castType === 'self_buff') {
+        this._castSkill(skill, key, this.px, this.py);
         this.targeting.consume();
       }
-      // For other types: wait for user to click (handled in _update)
+      // For other types: wait for user to click
     } else {
-      // No targeting config found — fall back to instant cast
-      this._useSkill(key);
+      // Fallback: cast at self
+      this._castSkill(skill, key, this.px, this.py);
     }
+  }
+
+  /**
+   * Map skill castType to targeting config
+   */
+  _getTargetingConfig(skill) {
+    switch (skill.castType) {
+      case 'instant_melee':
+        return { type: 'instant', range: skill.range };
+      case 'projectile':
+        return { type: 'line', range: skill.range };
+      case 'ground_target_aoe':
+        return { type: 'aoe', range: skill.range, radius: skill.areaRadius || 50 };
+      case 'self_buff':
+        return { type: 'self_aoe', range: 0 };
+      case 'dash':
+        return { type: 'line', range: skill.range };
+      default:
+        return { type: 'instant', range: skill.range };
+    }
+  }
+
+  /**
+   * Cast a skill at target location
+   */
+  _castSkill(skill, key, targetX, targetY) {
+    const gs = this.gameState;
+    
+    // Validate mana
+    if (gs.mp < skill.manaCost) return;
+
+    // Execute skill via SkillExecutor
+    const hits = this.skillExecutor.execute(
+      skill, 
+      this.px, this.py, 
+      targetX, targetY, 
+      gs.classData?.baseStats || {}, 
+      gs.classData?.id || 'warrior'
+    );
+
+    // Show damage numbers for hits
+    for (const hit of hits) {
+      this.damageNumbers.push({
+        x: hit.x + (Math.random() - 0.5) * 30,
+        y: hit.y - 20,
+        text: `-${hit.dmg}`,
+        color: skill.castType === 'self_buff' ? '#88ff88' : '#ffffff',
+        life: 1.2,
+        big: hit.killed,
+      });
+      
+      if (hit.killed) {
+        this.damageNumbers.push({
+          x: hit.x,
+          y: hit.y - 40,
+          text: 'SLAIN!',
+          color: '#ffe74a',
+          life: 1.5,
+          big: false,
+        });
+        this._gainXP(hit.enemy.xp);
+        gs.kills = (gs.kills || 0) + 1;
+      }
+    }
+
+    // Consume mana and set cooldown
+    gs.mp = Math.max(0, Math.min(gs.maxMp, gs.mp - skill.manaCost));
+    this.cooldowns[key] = skill.cooldown * 1000; // Convert to ms
+    this.attackAnimationTimer = this.ATTACK_ANIM_DURATION;
+
+    // Feedback
+    if (skill.manaCost > 0) {
+      this.damageNumbers.push({
+        x: this.px,
+        y: this.py - 50,
+        text: `-${skill.manaCost} MP`,
+        color: '#4a9eff',
+        life: 0.8,
+      });
+    }
+
+    this.onStateUpdate({ ...gs });
   }
 
   _loop() {
@@ -427,13 +517,15 @@ export class GameEngine {
     // ── Targeting confirmation ──
     if (this.targeting.confirmed || this.targeting.cancelled) {
       const key = this.targeting.skillKey;
+      const classId = this.gameState.classData?.id || 'warrior';
+      const skill = getSkillByKey(classId, key);
       const target = this.targeting.mouseWorld
         ? this.targeting.getTarget(this.px, this.py)
         : { x: this.px, y: this.py };
       const wasConfirmed = this.targeting.confirmed;
       this.targeting.consume(); // clears flags + active state if cancelled
-      if (wasConfirmed && key) {
-        this._executeSkill(key, target.x, target.y);
+      if (wasConfirmed && key && skill) {
+        this._castSkill(skill, key, target.x, target.y);
       }
     }
 
@@ -584,132 +676,7 @@ export class GameEngine {
     });
   }
 
-  // Perform the actual skill cast at a given world target position
-  _executeSkill(key, targetX, targetY) {
-    const gs = this.gameState;
-    const abilities = gs.classData?.abilities || [];
-    const keyMap = { Q: 0, W: 1, E: 2, R: 3 };
-    const ability = abilities[keyMap[key]];
-    if (!ability) return;
 
-    const cost = ability.mpCost || 0;
-    const skillLevel = gs.skillLevels?.[key] || 0;
-    const classAtk = gs.classData?.baseStats?.attack || 20;
-    const equipAtk = gs.equipStats?.attack || 0;
-
-    if (ability.type !== 'utility') {
-      // Use targeted position as the cast origin for aimed skills (line/aoe/ultimate)
-      // This ensures enemies in the aimed direction are hit, not just nearest to player
-      const hits = this.enemyManager.applyAbilityDamage(
-        this.px, this.py, ability.type, skillLevel, classAtk, equipAtk, targetX, targetY
-      );
-
-      for (const hit of hits) {
-        this.damageNumbers.push({
-          x: hit.x + (Math.random() - 0.5) * 30,
-          y: hit.y - 20,
-          text: `-${hit.dmg}`,
-          color: ability.type === 'ultimate' ? '#ff9800' : '#ffffff',
-          life: 1.2,
-          big: ability.type === 'ultimate',
-        });
-        if (hit.killed) {
-          this.effects.push({ x: hit.x, y: hit.y, radius: 30, life: 0.5, maxLife: 0.5, color: '#ff4444' });
-          this.damageNumbers.push({ x: hit.x, y: hit.y - 30, text: 'SLAIN!', color: '#ffe74a', life: 1.5, big: false });
-        }
-      }
-
-      // Visual effect at the targeted position — use skill FX
-      skillFX.create(
-        targetX,
-        targetY,
-        ability.type,
-        ability.type === 'aoe' || ability.type === 'ultimate' ? 60 : 25,
-        0.5,
-        gs.classData?.color || '#ffffff'
-      );
-    } else {
-      this.damageNumbers.push({ x: this.px, y: this.py - 30, text: ability.name + '!', color: '#4caf50', life: 1.0 });
-    }
-
-    // Consume MP and cooldown only after successful execution
-    gs.mp -= cost;
-    this.cooldowns[key] = this.skillCooldownMax[key];
-    this.attackAnimationTimer = this.ATTACK_ANIM_DURATION; // Trigger attack gear animation
-    this.onStateUpdate({ ...gs });
-  }
-
-  _useSkill(key) {
-    const gs = this.gameState;
-    if (this.cooldowns[key] > 0) return;
-
-    // R locked until level 6
-    if (key === 'R' && gs.level < 6) {
-      this.damageNumbers.push({ x: this.px, y: this.py - 30, text: 'Unlock R at Level 6!', color: '#aaaaaa', life: 1.5 });
-      return;
-    }
-
-    // Q, W, E locked until at least 1 skill point invested
-    if (key !== 'R') {
-      const skillLevel = gs.skillLevels?.[key] || 0;
-      if (skillLevel === 0) {
-        this.damageNumbers.push({ x: this.px, y: this.py - 30, text: `${key} locked — invest a skill point!`, color: '#aaaaaa', life: 1.5 });
-        return;
-      }
-    }
-
-    const abilities = gs.classData?.abilities || [];
-    const keyMap = { Q: 0, W: 1, E: 2, R: 3 };
-    const ability = abilities[keyMap[key]];
-    if (!ability) return;
-
-    const cost = ability.mpCost || 0;
-    if (gs.mp < cost) {
-      this.damageNumbers.push({ x: this.px, y: this.py - 30, text: 'No MP!', color: '#4a9eff', life: 1.5 });
-      return;
-    }
-
-    gs.mp -= cost;
-
-    // Apply damage to real enemies
-    const skillLevel = gs.skillLevels?.[key] || 0;
-    const classAtk = gs.classData?.baseStats?.attack || 20;
-    const equipAtk = gs.equipStats?.attack || 0;
-
-    if (ability.type !== 'utility') {
-      const hits = this.enemyManager.applyAbilityDamage(this.px, this.py, ability.type, skillLevel, classAtk, equipAtk);
-      for (const hit of hits) {
-        this.damageNumbers.push({
-          x: hit.x + (Math.random() - 0.5) * 30,
-          y: hit.y - 20,
-          text: `-${hit.dmg}`,
-          color: ability.type === 'ultimate' ? '#ff9800' : '#ffffff',
-          life: 1.2,
-          big: ability.type === 'ultimate',
-        });
-        if (hit.killed) {
-          this.effects.push({ x: hit.x, y: hit.y, radius: 30, life: 0.5, maxLife: 0.5, color: '#ff4444' });
-          this.damageNumbers.push({ x: hit.x, y: hit.y - 30, text: 'SLAIN!', color: '#ffe74a', life: 1.5, big: false });
-        }
-      }
-      // Also show the directional effect using skill FX
-      skillFX.create(
-        this.px + Math.cos(Math.random() * Math.PI * 2) * (ability.type === 'aoe' ? 100 : 70),
-        this.py + Math.sin(Math.random() * Math.PI * 2) * (ability.type === 'aoe' ? 100 : 70),
-        ability.type,
-        ability.type === 'aoe' ? 50 : 25,
-        0.5,
-        gs.classData?.color || '#ffffff'
-      );
-    }
-
-    if (ability.type === 'utility') {
-      this.damageNumbers.push({ x: this.px, y: this.py - 30, text: ability.name + '!', color: '#4caf50', life: 1.0 });
-    }
-
-    this.cooldowns[key] = this.skillCooldownMax[key];
-    this.onStateUpdate({ ...gs });
-  }
 
   _interact() {
     const gs = this.gameState;
