@@ -685,25 +685,63 @@ export class GameEngine {
   }
 
   _generateLoot(level) {
+    const classId = this.gameState?.classData?.id || 'warrior';
     const rarities = ['common', 'common', 'common', 'uncommon', 'uncommon', 'rare', 'epic'];
-    const slots = ['helmet', 'chest', 'pants', 'gloves', 'boots', 'weapon'];
-    const slot = slots[Math.floor(Math.random() * slots.length)];
-    const rarity = rarities[Math.floor(Math.random() * rarities.length)];
-    const names = { helmet: 'Helm', chest: 'Chestplate', pants: 'Greaves', gloves: 'Gauntlets', boots: 'Boots', weapon: 'Blade' };
-    const prefixes = ['Iron', 'Shadow', 'Frost', 'Divine', 'Ancient', 'Cursed', 'Radiant'];
-    const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-    const icons = { helmet: '⛑️', chest: '🧥', pants: '👖', gloves: '🧤', boots: '👢', weapon: '⚔️' };
-    return {
-      id: `loot_${Date.now()}`,
-      name: `${prefix} ${names[slot]}`,
-      slot,
-      rarity,
-      icon: icons[slot],
-      stats: {
-        attack: slot === 'weapon' ? Math.floor((5 + level * 2) * (rarity === 'epic' ? 2 : rarity === 'rare' ? 1.5 : 1)) : 0,
-        defense: slot !== 'weapon' ? Math.floor((3 + level) * (rarity === 'epic' ? 2 : rarity === 'rare' ? 1.5 : 1)) : 0,
-      },
+    const rarity   = rarities[Math.floor(Math.random() * rarities.length)];
+    return this._buildClassLoot(classId, level, rarity);
+  }
+
+  // Class-aware loot builder (mirrors EnemyManager.buildLootItem for chest drops)
+  _buildClassLoot(classId, level, rarity) {
+    const PREFIXES   = ['Iron','Shadow','Frost','Divine','Ancient','Cursed','Radiant','Void','Storm','Ember'];
+    const RARITY_MULT = { common:1, uncommon:1.5, rare:2.2, epic:3.5, legendary:6 };
+    const CLASS_WEAPONS = {
+      warrior: [
+        { slot:'weapon', icon:'⚔️', names:['Sword','Blade','Longsword','Claymore'] },
+        { slot:'shield', icon:'🛡️', names:['Shield','Buckler','Aegis','Bulwark'] },
+      ],
+      lancer:  [{ slot:'weapon', icon:'🗡️', names:['Spear','Lance','Pike','Glaive'] }],
+      archer:  [{ slot:'weapon', icon:'🏹', names:['Bow','Longbow','Recurve','Greatbow'] }],
+      monk:    [{ slot:'weapon', icon:'🪄', names:['Staff','Rod','Wand','Scepter'] }],
     };
+    const ARMOR_SLOTS = ['helmet','chest','pants','gloves','boots'];
+    const ARMOR_NAMES = {
+      helmet:['Helm','Crown','Hood','Coif'], chest:['Plate','Hauberk','Cuirass','Chestpiece'],
+      pants:['Greaves','Legguards','Chausses'], gloves:['Gauntlets','Grips','Vambraces'],
+      boots:['Boots','Sabatons','Treads'],
+    };
+    const NEUTRAL = [
+      { slot:'ring',    icon:'💍', names:['Ring','Band','Signet'],   stats:(l,m)=>({ attack:Math.floor((2+l)*m),  defense:Math.floor((1+l*0.5)*m) }) },
+      { slot:'amulet',  icon:'📿', names:['Amulet','Pendant','Charm'], stats:(l,m)=>({ attack:Math.floor((1+l)*m),  defense:Math.floor((2+l)*m) }) },
+      { slot:'trinket', icon:'🔮', names:['Orb','Gem','Shard'],       stats:(l,m)=>({ attack:Math.floor((3+l*1.2)*m), defense:0 }) },
+    ];
+
+    const prefix = PREFIXES[Math.floor(Math.random() * PREFIXES.length)];
+    const mult   = RARITY_MULT[rarity] || 1;
+    const rnd    = () => Math.floor(Math.random() * 1000);
+
+    if (Math.random() < 0.70) {
+      const weaponPool = CLASS_WEAPONS[classId] || CLASS_WEAPONS.warrior;
+      if (Math.random() < 0.35) {
+        const w = weaponPool[rnd() % weaponPool.length];
+        const n = w.names[rnd() % w.names.length];
+        const isShield = w.slot === 'shield';
+        return { id:`loot_${Date.now()}_${Math.random()}`, name:`${prefix} ${n}`, slot:w.slot, rarity, icon:w.icon,
+          weaponClass:classId, classRestriction:classId,
+          stats:{ attack:isShield?0:Math.floor((4+level*2)*mult), defense:isShield?Math.floor((3+level*1.5)*mult):0 } };
+      } else {
+        const s = ARMOR_SLOTS[rnd() % ARMOR_SLOTS.length];
+        const n = ARMOR_NAMES[s][rnd() % ARMOR_NAMES[s].length];
+        return { id:`loot_${Date.now()}_${Math.random()}`, name:`${prefix} ${n}`, slot:s, rarity,
+          icon:{helmet:'⛑️',chest:'🧥',pants:'👖',gloves:'🧤',boots:'👢'}[s],
+          classRestriction:'all', stats:{ attack:0, defense:Math.floor((2+level)*mult) } };
+      }
+    } else {
+      const nd = NEUTRAL[rnd() % NEUTRAL.length];
+      const n  = nd.names[rnd() % nd.names.length];
+      return { id:`loot_${Date.now()}_${Math.random()}`, name:`${prefix} ${n}`, slot:nd.slot, rarity,
+        icon:nd.icon, classRestriction:'all', stats:nd.stats(level, mult) };
+    }
   }
 
   _usePotion(type) {

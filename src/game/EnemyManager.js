@@ -107,58 +107,83 @@ const ARMOR_NAMES = {
 const PREFIXES = ['Iron','Shadow','Frost','Divine','Ancient','Cursed','Radiant','Void','Storm','Ember','Bone','Arcane'];
 const RARITY_MULT = { common:1, uncommon:1.5, rare:2.2, epic:3.5, legendary:6 };
 
-// 70% chance weapon drop is class-appropriate, 30% is armor
+// Neutral ring/accessory loot (no class restriction — always usable)
+const NEUTRAL_ITEMS = [
+  { slot: 'ring',    icon: '💍', names: ['Ring','Band','Signet','Loop','Seal'],       stats: (lvl, mult) => ({ attack: Math.floor((2 + lvl) * mult), defense: Math.floor((1 + lvl * 0.5) * mult) }) },
+  { slot: 'amulet',  icon: '📿', names: ['Amulet','Pendant','Charm','Talisman'],       stats: (lvl, mult) => ({ attack: Math.floor((1 + lvl) * mult), defense: Math.floor((2 + lvl) * mult) }) },
+  { slot: 'trinket', icon: '🔮', names: ['Orb','Crystal','Gem','Shard','Focus'],       stats: (lvl, mult) => ({ attack: Math.floor((3 + lvl * 1.2) * mult), defense: 0 }) },
+];
+
+// Build a single class-aware loot item
+function buildLootItem(playerLevel, playerClassId, rarity) {
+  const classId  = playerClassId || 'warrior';
+  const mult     = RARITY_MULT[rarity];
+  const prefix   = PREFIXES[Math.floor(Math.random() * PREFIXES.length)];
+
+  // 70% → class weapon or armor | 30% → neutral accessory
+  if (Math.random() < 0.70) {
+    // 35% of the 70% → class-specific weapon; rest → armor
+    const rollWeapon = Math.random() < 0.35;
+    const classWeaponPool = CLASS_WEAPONS[classId] || CLASS_WEAPONS.warrior;
+
+    if (rollWeapon && classWeaponPool.length > 0) {
+      const weaponDef = classWeaponPool[Math.floor(Math.random() * classWeaponPool.length)];
+      const namePart  = weaponDef.names[Math.floor(Math.random() * weaponDef.names.length)];
+      const isShield  = weaponDef.slot === 'shield';
+      return {
+        id: `loot_${Date.now()}_${Math.random()}`,
+        name: `${prefix} ${namePart}`,
+        slot: weaponDef.slot,
+        rarity,
+        icon: weaponDef.icon,
+        weaponClass: classId,
+        classRestriction: classId,
+        stats: {
+          attack:  isShield ? 0 : Math.floor((4 + playerLevel * 2) * mult),
+          defense: isShield ? Math.floor((3 + playerLevel * 1.5) * mult) : 0,
+        },
+      };
+    } else {
+      // Armor — usable by all classes
+      const armorSlot = ARMOR_SLOTS[Math.floor(Math.random() * ARMOR_SLOTS.length)];
+      const namePart  = ARMOR_NAMES[armorSlot][Math.floor(Math.random() * ARMOR_NAMES[armorSlot].length)];
+      return {
+        id: `loot_${Date.now()}_${Math.random()}`,
+        name: `${prefix} ${namePart}`,
+        slot: armorSlot,
+        rarity,
+        icon: { helmet:'⛑️', chest:'🧥', pants:'👖', gloves:'🧤', boots:'👢' }[armorSlot],
+        classRestriction: 'all',
+        stats: { attack: 0, defense: Math.floor((2 + playerLevel) * mult) },
+      };
+    }
+  } else {
+    // 30% → neutral accessory (ring / amulet / trinket)
+    const neutralDef = NEUTRAL_ITEMS[Math.floor(Math.random() * NEUTRAL_ITEMS.length)];
+    const namePart   = neutralDef.names[Math.floor(Math.random() * neutralDef.names.length)];
+    return {
+      id: `loot_${Date.now()}_${Math.random()}`,
+      name: `${prefix} ${namePart}`,
+      slot: neutralDef.slot,
+      rarity,
+      icon: neutralDef.icon,
+      classRestriction: 'all',
+      stats: neutralDef.stats(playerLevel, mult),
+    };
+  }
+}
+
 function rollLoot(enemyType, playerLevel, playerClassId) {
-  const def = ENEMY_TYPES[enemyType];
+  const def  = ENEMY_TYPES[enemyType];
   const tier = def.tier;
 
   const dropChance = { boss: 1.0, miniboss: 1.0, elite: 0.75, ranged: 0.22, melee: 0.16 }[tier] ?? 0.16;
   if (Math.random() > dropChance * def.lootMult) return null;
 
-  const pool = RARITY_POOL[tier] || RARITY_POOL.normal;
+  const pool   = RARITY_POOL[tier] || RARITY_POOL.normal;
   const rarity = pool[Math.floor(Math.random() * pool.length)];
-  const prefix = PREFIXES[Math.floor(Math.random() * PREFIXES.length)];
-  const mult = RARITY_MULT[rarity];
 
-  // Decide: weapon or armor? (weapon slots favor class weapons)
-  const rollWeapon = Math.random() < 0.35; // 35% chance to be a weapon slot item
-  const classId = playerClassId || 'warrior';
-  const classWeaponPool = CLASS_WEAPONS[classId] || CLASS_WEAPONS.warrior;
-
-  if (rollWeapon && classWeaponPool.length > 0) {
-    // Pick a weapon type for the player's class
-    const weaponDef = classWeaponPool[Math.floor(Math.random() * classWeaponPool.length)];
-    const namePart = weaponDef.names[Math.floor(Math.random() * weaponDef.names.length)];
-    const isShield = weaponDef.slot === 'shield';
-    return {
-      id: `loot_${Date.now()}_${Math.random()}`,
-      name: `${prefix} ${namePart}`,
-      slot: weaponDef.slot,
-      rarity,
-      icon: weaponDef.icon,
-      weaponClass: classId, // which class this weapon belongs to
-      stats: {
-        attack:  isShield ? 0 : Math.floor((4 + playerLevel * 2) * mult),
-        defense: isShield ? Math.floor((3 + playerLevel * 1.5) * mult) : 0,
-      },
-    };
-  } else {
-    // Armor drop
-    const armorSlot = ARMOR_SLOTS[Math.floor(Math.random() * ARMOR_SLOTS.length)];
-    const namePool = ARMOR_NAMES[armorSlot];
-    const namePart = namePool[Math.floor(Math.random() * namePool.length)];
-    return {
-      id: `loot_${Date.now()}_${Math.random()}`,
-      name: `${prefix} ${namePart}`,
-      slot: armorSlot,
-      rarity,
-      icon: { helmet:'⛑️', chest:'🧥', pants:'👖', gloves:'🧤', boots:'👢' }[armorSlot],
-      stats: {
-        attack: 0,
-        defense: Math.floor((2 + playerLevel) * mult),
-      },
-    };
-  }
+  return buildLootItem(playerLevel, playerClassId, rarity);
 }
 
 // ─── Camp group aggro radius ──────────────────────────────────────────────────
