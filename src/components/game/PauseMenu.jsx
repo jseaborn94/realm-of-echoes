@@ -1,9 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SettingsPanel from './SettingsPanel.jsx';
 
 export default function PauseMenu({ isOpen, onClose, onReturnToSelect, onLogout, playerName, level, className, classColor }) {
   const [showSettings, setShowSettings] = useState(false);
+
+  // Auto-close settings when menu closes
+  useEffect(() => {
+    if (!isOpen) setShowSettings(false);
+  }, [isOpen]);
 
   // Reset to main menu view whenever pause is toggled off
   if (!isOpen) return null;
@@ -15,15 +20,15 @@ export default function PauseMenu({ isOpen, onClose, onReturnToSelect, onLogout,
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[100] flex items-center justify-center"
-        style={{ background: 'rgba(0,0,0,0.75)' }}
+        style={{ background: 'rgba(0,0,0,0.8)' }}
         onClick={e => e.target === e.currentTarget && onClose()}
       >
         <motion.div
-          initial={{ scale: 0.85, y: -20, opacity: 0 }}
+          initial={{ scale: 0.9, y: -30, opacity: 0 }}
           animate={{ scale: 1, y: 0, opacity: 1 }}
-          exit={{ scale: 0.85, y: -20, opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 24 }}
-          className="panel-glass-gold rounded-2xl p-8 w-80"
+          exit={{ scale: 0.9, y: -30, opacity: 0 }}
+          transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+          className="panel-glass-gold rounded-2xl p-8 w-full max-w-sm"
         >
           <AnimatePresence mode="wait">
             {!showSettings ? (

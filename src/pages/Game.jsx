@@ -162,12 +162,13 @@ export default function Game() {
     return () => clearTimeout(timer);
   }, [gameStarted]); // eslint-disable-line
 
-  // Keep engine's gameState ref in sync
+  // Keep engine's gameState ref and pause state in sync
   useEffect(() => {
     if (engineRef.current && gameState) {
       engineRef.current.gameState = gameState;
+      engineRef.current.isPaused = showPauseMenu;
     }
-  }, [gameState]);
+  }, [gameState, showPauseMenu]);
 
   // Auto-save every 60 seconds while playing
   useEffect(() => {
@@ -183,7 +184,13 @@ export default function Game() {
     if (!gameStarted) return;
     const handler = (e) => {
       if (e.key === 'Escape') {
-        // If any panel is open, close it first
+        e.preventDefault();
+        // If pause menu is open, close it
+        if (showPauseMenu) {
+          setShowPauseMenu(false);
+          return;
+        }
+        // If any other panel is open, close them first
         if (showInventory || showSkills || showWorldMap || craftingNPC || gameState?.dialogueNPC) {
           setShowInventory(false);
           setShowSkills(false);
@@ -191,8 +198,8 @@ export default function Game() {
           setCraftingNPC(null);
           if (gameState?.dialogueNPC) setGameState(prev => ({ ...prev, dialogueNPC: null }));
         } else {
-          // Toggle pause menu
-          setShowPauseMenu(v => !v);
+          // Open pause menu
+          setShowPauseMenu(true);
         }
         return;
       }

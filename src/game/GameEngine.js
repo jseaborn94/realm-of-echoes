@@ -22,6 +22,7 @@ export class GameEngine {
     this.running = false;
     this.lastTime = 0;
     this.animFrame = null;
+    this.isPaused = false; // pause state for menu
 
     // Camera & zoom
     this.camX = 0;
@@ -263,8 +264,13 @@ export class GameEngine {
   }
 
   _update(dt) {
-    const gs = this.gameState;
-    const spd = PLAYER_SPEED * (gs.classData?.baseStats?.speed || 1.0) * dt;
+     const gs = this.gameState;
+     // If paused, skip all gameplay updates but keep state sync
+     if (this.isPaused) {
+       this.onStateUpdate({ ...gs });
+       return;
+     }
+     const spd = PLAYER_SPEED * (gs.classData?.baseStats?.speed || 1.0) * dt;
 
     // Click-to-move
     let moved = false;
