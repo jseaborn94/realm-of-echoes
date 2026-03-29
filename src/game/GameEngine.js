@@ -1028,28 +1028,41 @@ export class GameEngine {
     ctx.ellipse(px, py + 16, 14, 6, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Draw player sprite from asset registry
+    // Get animation state and facing direction
     const classId = gs.classData?.id || 'warrior';
-    const color = gs.classData?.spriteColor || 'blue'; // Add spriteColor to classData
-    const action = this.destination ? 'run' : 'idle';
+    const color = gs.classData?.spriteColor || 'blue';
+    const animState = this.destination ? 'move' : 'idle';
+    const facingAngle = this.facingAngle; // Already in radians from movement
 
+    // ─── Layered draw order ───────────────────────────────────────────
+    // 1. Back accessories (capes, etc.)
     try {
-      await assetIntegration.drawPlayerSprite(ctx, classId, px, py, color, action);
+      await equipmentRenderer.drawEquipmentLayer(ctx, px, py, gs.equipped, classId, animState, 'back', facingAngle);
+    } catch (err) {}
+
+    // 2. Base character sprite
+    try {
+      await assetIntegration.drawPlayerSprite(ctx, classId, px, py, color, animState);
     } catch (err) {
       console.warn('[RENDER] Player sprite failed, using fallback');
-      // Fallback: draw simple placeholder
       ctx.fillStyle = gs.classData?.color || '#888';
       ctx.fillRect(px - 10, py - 20, 20, 28);
     }
 
-    // Draw equipped gear layers on top of base character
+    // 3. Chest armor
     try {
-      const classId = gs.classData?.id || 'warrior';
-      const animState = this.destination ? 'move' : 'idle';
-      await equipmentRenderer.drawEquipment(ctx, px, py, gs.equipped, classId, animState, 1);
-    } catch (err) {
-      // Silent fail — equipment rendering is optional
-    }
+      await equipmentRenderer.drawEquipmentLayer(ctx, px, py, gs.equipped, classId, animState, 'chest', facingAngle);
+    } catch (err) {}
+
+    // 4. Helmet
+    try {
+      await equipmentRenderer.drawEquipmentLayer(ctx, px, py, gs.equipped, classId, animState, 'helmet', facingAngle);
+    } catch (err) {}
+
+    // 5. Held weapon / front accessories (drawn on top for readability)
+    try {
+      await equipmentRenderer.drawEquipmentLayer(ctx, px, py, gs.equipped, classId, animState, 'weapon', facingAngle);
+    } catch (err) {}
 
     // Nameplate
     ctx.font = 'bold 11px Cinzel, serif';
