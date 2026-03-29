@@ -629,7 +629,13 @@ export class EnemyManager {
       this.respawnQueue.push({ type: e.type, bounds: e.bounds, zoneId: e.zoneId, spawnTime: now + delay });
     }
 
-    return { playerDmgTotal, lootDrops, xpGained: dead.reduce((s, e) => s + e.xp, 0), killCount: dead.length };
+    return { 
+      playerDmgTotal, 
+      lootDrops, 
+      xpGained: dead.reduce((s, e) => s + e.xp, 0), 
+      killCount: dead.length,
+      deadEnemies: dead, // For quest tracking
+    };
   }
 
   _blocked(wx, wy) {

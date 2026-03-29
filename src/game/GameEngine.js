@@ -14,6 +14,8 @@ import { getSkillByKey, calculateSkillDamage, canCastSkill } from './SkillSystem
 import { SkillExecutor } from './SkillExecutor.js';
 import { combatFX } from './CombatFX.js';
 import { buffSystem } from './BuffSystem.js';
+import questManager from './QuestManager.js';
+import { getNPCById, NPCS } from './NPCDefinitions.js';
 
 export class GameEngine {
   constructor(canvas, gameState, onStateUpdate) {
@@ -66,11 +68,12 @@ export class GameEngine {
     this.potionCooldowns = { hp: 0, mp: 0 };
     this.POTION_CD = 30000;
 
-    // NPC interaction
+    // NPC interaction & quests
     this.nearNPC = null;
     this.nearChest = null;
     this.nearNode = null;       // gathering node
     this.isGathering = false;   // currently holding F to gather
+    this.questManager = questManager;
 
     // Targeting / aiming system
     this.targeting = new TargetingSystem();
@@ -517,6 +520,15 @@ export class GameEngine {
           text: `+${label}`,
           color: '#4caf50', life: 2.0, big: false,
         });
+        
+        // Update gather quests
+        this.questManager.getActiveQuests().forEach(quest => {
+          if (quest.objectiveType === 'gather' && quest.target === node.type) {
+            drops.forEach(drop => {
+              this.questManager.updateProgress(quest.id, drop.qty || 1);
+            });
+          }
+        });
       }
     }
 
@@ -578,6 +590,15 @@ export class GameEngine {
     if (enemyResult.xpGained > 0) {
       this._gainXP(enemyResult.xpGained);
       gs.kills = (gs.kills || 0) + enemyResult.killCount;
+      
+      // Update kill quests
+      for (const dead of enemyResult.deadEnemies || []) {
+        this.questManager.getActiveQuests().forEach(quest => {
+          if (quest.objectiveType === 'kill' && quest.target === dead.type) {
+            this.questManager.updateProgress(quest.id);
+          }
+        });
+      }
     }
 
     // Loot drops from kills

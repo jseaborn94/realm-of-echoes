@@ -16,9 +16,13 @@ import WorldMap from '@/components/game/WorldMap.jsx';
 import GMPanel from '@/components/game/GMPanel.jsx';
 import SkillHotbar from '@/components/game/SkillHotbar.jsx';
 import BuffIndicators from '@/components/game/BuffIndicators.jsx';
+import QuestTracker from '@/components/game/QuestTracker.jsx';
+import QuestOfferPanel from '@/components/game/QuestOfferPanel.jsx';
 import { getNPCRole, consumeInputs as craftConsume } from '@/game/CraftingRecipes.js';
 import { addResourcesToInventory } from '@/game/GatheringSystem.js';
 import { getSkillsByClass } from '@/game/SkillSystem.js';
+import { getNPCById } from '@/game/NPCDefinitions.js';
+import { getQuestById } from '@/game/QuestSystem.js';
 
 const initialGameState = (classId, playerName) => {
   const classData = CLASSES[classId];
@@ -73,6 +77,8 @@ export default function Game() {
   const [showGMPanel, setShowGMPanel] = useState(false);
   const [lootItem, setLootItem] = useState(null);
   const [craftingNPC, setCraftingNPC] = useState(null);
+  const [questOfferNPC, setQuestOfferNPC] = useState(null);
+  const [questOfferList, setQuestOfferList] = useState([]);
 
   // Stable update callback
   const handleStateUpdate = useCallback((newState) => {
@@ -144,6 +150,45 @@ export default function Game() {
     if (engineRef.current) { engineRef.current.stop(); engineRef.current = null; }
     setIsLoggingOut(true);
     setTimeout(() => base44.auth.logout(), 200);
+  }
+
+  // Quest: Accept
+  function handleAcceptQuest(questId) {
+    engineRef.current?.questManager?.startQuest(questId);
+    setQuestOfferNPC(null);
+    setQuestOfferList([]);
+  }
+
+  // Quest: Turn In
+  function handleTurnInQuest(questId) {
+    const quest = getQuestById(questId);
+    if (!quest) return;
+    
+    const success = engineRef.current?.questManager?.turnInQuest(questId);
+    if (!success) return;
+
+    // Apply rewards
+    setGameState(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        xp: prev.xp + quest.rewards.xp,
+        gold: (prev.gold || 0) + quest.rewards.gold,
+      };
+    });
+  }
+
+  // NPC interaction: Show quest offer
+  function handleNPCInteraction(npc) {
+    if (!engineRef.current?.questManager) return;
+    const availableQuests = npc.availableQuests?.filter(qid => {
+      const qs = engineRef.current.questManager.getQuestState(qid);
+      return qs?.state === 'not_started' || qs?.state === 'active';
+    }) || [];
+    if (availableQuests.length > 0) {
+      setQuestOfferNPC(npc);
+      setQuestOfferList(availableQuests);
+    }
   }
 
   useEffect(() => {
@@ -239,28 +284,24 @@ export default function Game() {
         return;
       }
 
-      // Dialogue / crafting advance with F
+      // Dialogue / crafting / quest advance with F
       if (e.key === 'f' || e.key === 'F') {
+        if (questOfferNPC) {
+          // Quest panel is open, ignore F
+          return;
+        }
         if (gameState?.dialogueNPC) {
-          const npcRole = getNPCRole(gameState.dialogueNPC.name || '');
-          if (npcRole) {
-            // Open crafting panel instead of dialogue
-            setCraftingNPC(gameState.dialogueNPC);
-            setGameState(prev => ({ ...prev, dialogueNPC: null, dialogueIndex: 0 }));
-          } else {
-            const lines = gameState.dialogueNPC.dialogue || [];
-            if (gameState.dialogueIndex < lines.length - 1) {
-              setGameState(prev => ({ ...prev, dialogueIndex: prev.dialogueIndex + 1 }));
-            } else {
-              setGameState(prev => ({ ...prev, dialogueNPC: null, dialogueIndex: 0 }));
-            }
+          const npc = gameState.dialogueNPC;
+          const npcDef = getNPCById(npc.id);
+          if (npcDef) {
+            handleNPCInteraction(npcDef);
           }
         }
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [gameStarted, gameState, showInventory, showSkills, showWorldMap, craftingNPC, showPauseMenu, showGMPanel]);
+  }, [gameStarted, gameState, showInventory, showSkills, showWorldMap, craftingNPC, showPauseMenu, showGMPanel, questOfferNPC]);
 
   function handleEquip(item, slot) {
     setGameState(prev => {
@@ -420,6 +461,28 @@ export default function Game() {
 
       {/* Buff Indicators */}
       {gameState && <BuffIndicators buffs={gameState._activeBuffs || []} />}
+
+      {/* Quest Tracker */}
+      {gameState && engineRef.current && (
+        <QuestTracker
+          activeQuests={engineRef.current.questManager?.getActiveQuests() || []}
+          completedQuests={engineRef.current.questManager?.getCompletedQuests() || []}
+          onTurnIn={handleTurnInQuest}
+        />
+      )}
+
+      {/* Quest Offer Panel */}
+      {questOfferNPC && (
+        <QuestOfferPanel
+          npc={questOfferNPC}
+          availableQuests={questOfferList}
+          onAcceptQuest={handleAcceptQuest}
+          onDecline={() => {
+            setQuestOfferNPC(null);
+            setQuestOfferList([]);
+          }}
+        />
+      )}
 
       {/* Pause menu button */}
       <button

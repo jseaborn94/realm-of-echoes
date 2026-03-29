@@ -26,6 +26,7 @@ export default function GMPanel({
     world: false,
     loot: false,
     visual: false,
+    quests: false,
   });
 
   const toggleSection = (section) => {
@@ -209,6 +210,18 @@ export default function GMPanel({
       if (dummy) {
         dummy.isInvulnerable = !dummy.isInvulnerable;
       }
+    }
+  };
+
+  const completeAllQuests = () => {
+    if (gameEngine && gameEngine.questManager) {
+      gameEngine.questManager.completeAllQuests();
+    }
+  };
+
+  const resetAllQuests = () => {
+    if (gameEngine && gameEngine.questManager) {
+      gameEngine.questManager.resetAllQuests();
     }
   };
 
@@ -400,6 +413,25 @@ export default function GMPanel({
           <Button onClick={() => updateState({ testLootMode: !gameState.testLootMode })}>
             Test Loot Mode ({gameState.testLootMode ? 'ON' : 'OFF'})
           </Button>
+        </div>
+      </Section>
+
+      {/* Quests Section */}
+      <Section
+       title="8. QUESTS"
+        expanded={expandedSections.quests}
+        onToggle={() => toggleSection('quests')}
+      >
+        <div className="space-y-1">
+          <Button onClick={completeAllQuests}>Complete All Quests</Button>
+          <Button onClick={resetAllQuests}>Reset All Quests</Button>
+          {gameEngine && gameEngine.questManager && (
+            <div className="text-yellow-300 text-xs mt-2">
+              Active: {gameEngine.questManager.getActiveQuests().length}
+              <br />
+              Completed: {gameEngine.questManager.getCompletedQuests().length}
+            </div>
+          )}
         </div>
       </Section>
 

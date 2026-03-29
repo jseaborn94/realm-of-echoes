@@ -439,33 +439,18 @@ export class WorldGenerator {
 
   // ── NPCs ─────────────────────────────────────────────────────────────────
   _placeNPCs() {
-    this.npcs = [
-      // ── Zone 1: Evergreen Hollow (spawn col 185, row 390) ──
-      { col: 185, row: 390, name: 'Elder Thaddeus',  dialogue: ["Welcome to Evergreen Hollow. Your journey begins here.", "Head east to find Thornmere in the Wildwood.", "Go northwest to reach Ironhaven, or northeast for Frostholm. Beyond lies Shadowfall."] },
-      { col: 187, row: 388, name: 'Blacksmith Oryn', dialogue: ["I can smelt Ore into Metal Bars, and upgrade your gear.", "Mine rocks across the land to gather Ore. Bring 3 Ore to smelt a Metal Bar.", "Press F to open my crafting menu."] },
-      { col: 183, row: 392, name: 'Scout Mira',      dialogue: ["The Wildwood lies to the east — denser and wilder.", "Ironvale sits northwest, rocky and arid. Cold Frostholm is northeast.", "Shadowfall lurks in the far north. Don't go there unprepared."] },
-      // Zone 1 — Western Outpost
-      { col:  55, row: 440, name: 'Cook Yeva',       dialogue: ["I cook Raw Meat into meals that restore HP.", "Chop trees for Wood, then gather meat from sheep in the fields.", "Press F to open my cooking menu."] },
-      { col:  57, row: 442, name: 'Ranger Hollis',   dialogue: ["I craft leather armor from Hide and Metal Bars.", "Gather Hide and Wool from sheep roaming the plains.", "Press F to open my crafting menu."] },
-      // ── Zone 2: Thornmere (col 380, row 320) ──
-      { col: 380, row: 320, name: 'Thornmere Guard',  dialogue: ["Thornmere watches over the eastern Wildwood.", "The forest is dense — enemies lurk between the trees.", "Head northeast along the road to reach Frostholm."] },
-      { col: 382, row: 318, name: 'Weaponsmith Bram', dialogue: ["I forge blades from Metal Bars and Ore.", "Bring me Metal Bars to craft or upgrade your weapon.", "Press F to open my weapon forge."] },
-      { col: 460, row: 460, name: 'Herbalist Fenn',   dialogue: ["Wildwood fungi have strange healing properties.", "Don't push north too early — the Ironvale beasts are brutal.", "Crystals in Shadowfall are said to pulse with dark energy."] },
-      { col: 305, row: 460, name: 'Armorsmith Liss',  dialogue: ["I build heavy armor from Metal Bars and Hide.", "A well-armored adventurer survives longer.", "Press F to open my armor forge."] },
-      // ── Zone 3: Ironhaven (col 80, row 220) ──
-      { col:  80, row: 220, name: 'Ironhaven Elder',  dialogue: ["Ironhaven was built on bones of an older city.", "Ore veins run deep here — follow them into the rock.", "Do not touch the standing stones at the ruin sites."] },
-      { col:  82, row: 218, name: 'Geomancer Thal',   dialogue: ["The earth resonates with old power.", "Those boulders were placed deliberately — ancient engineering.", "Shadowfall is a wound that will not close."] },
-      { col:  35, row: 145, name: 'Ironvale Scout',   dialogue: ["The path to Frostholm is treacherous.", "Gear up well before crossing into the frozen lands.", "I've seen bears up there bigger than horses."] },
-      // ── Zone 4: Frostholm (col 340, row 150) ──
-      { col: 340, row: 150, name: 'Frostholm Warden', dialogue: ["Frostholm has stood for three hundred winters.", "Ice wolves grow bolder each year.", "Shadowfall lies north — avoid it until you are ready."] },
-      { col: 342, row: 148, name: 'Ice Mage Solvei',  dialogue: ["The ley lines converge beneath this glacier.", "Crystal formations are conduits for ancient magic.", "The Shadowfall boss is not of this world. Level 20 minimum."] },
-      { col: 455, row: 125, name: 'Frost Scout',      dialogue: ["These ruins predate the kingdom by centuries.", "Something stirs in the Shadowfall to the north.", "Be careful near the ice — it cracks."] },
-      // ── Zone 5: Dusk Citadel (col 210, row 65) ──
-      { col: 210, row:  65, name: 'Dusk Sentinel',    dialogue: ["You should not be here.", "The Wastes consume the unprepared.", "Only the strongest survive the Shadowfall."] },
-      { col: 212, row:  63, name: 'Cursed Scholar',   dialogue: ["I came to study the ruins. I cannot leave.", "The crystals speak if you listen long enough.", "Find the Obsidian Throne. Destroy it. Please."] },
-      { col:  75, row:  55, name: 'Shadow Watcher',   dialogue: ["This watch post has not had relief in months.", "Something drives the beasts south. Something ancient.", "Do not linger here after dark."] },
-      { col: 380, row:  60, name: 'East Sentinel',    dialogue: ["The eastern ruins are older than the kingdom.", "We've lost three scouts this week.", "If you find the Throne room — do not touch the altar."] },
-    ];
+    // Import NPCS from NPCDefinitions and populate from there
+    this.npcs = Object.values(NPCS).map(npc => ({
+      id: npc.id,
+      col: npc.col,
+      row: npc.row,
+      name: npc.name,
+      role: npc.role,
+      color: npc.color,
+      icon: npc.icon,
+      dialogue: npc.dialogue,
+      availableQuests: npc.availableQuests,
+    }));
   }
 
   // ── Chests ────────────────────────────────────────────────────────────────
