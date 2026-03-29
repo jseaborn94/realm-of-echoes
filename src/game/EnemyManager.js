@@ -372,9 +372,9 @@ export class EnemyManager {
     return results;
   }
 
-  draw(ctx, camX, camY) {
+  draw(ctx, camX, camY, playerSX, playerSY, fogRadiusWorld) {
     for (const e of this.enemies) {
-      this._drawEnemy(ctx, e, camX, camY);
+      this._drawEnemy(ctx, e, camX, camY, playerSX, playerSY, fogRadiusWorld);
     }
     // Draw projectiles
     for (const e of this.enemies) {
@@ -394,12 +394,20 @@ export class EnemyManager {
     }
   }
 
-  _drawEnemy(ctx, e, camX, camY) {
+  _drawEnemy(ctx, e, camX, camY, playerSX, playerSY, fogRadiusWorld) {
     const sx = e.x - camX;
     const sy = e.y - camY;
 
     // Culling
     if (sx < -60 || sx > ctx.canvas.width + 60 || sy < -60 || sy > ctx.canvas.height + 60) return;
+
+    // Fog visibility for labels
+    const distFromPlayer = fogRadiusWorld != null && playerSX != null
+      ? Math.sqrt((sx - playerSX) ** 2 + (sy - playerSY) ** 2)
+      : 0;
+    const labelAlpha = fogRadiusWorld != null
+      ? Math.max(0, Math.min(1, 1 - (distFromPlayer - fogRadiusWorld * 0.7) / (fogRadiusWorld * 0.3)))
+      : 1;
 
     const isBoss  = e.tier === 'boss';
     const isElite = e.tier === 'elite';
@@ -447,33 +455,41 @@ export class EnemyManager {
     ctx.textBaseline = 'middle';
     ctx.fillText(e.icon, sx, sy);
 
-    // Name
-    ctx.font = `bold ${isBoss ? 11 : 9}px Cinzel, serif`;
-    ctx.fillStyle = isBoss ? '#ff9800' : isElite ? '#ffd700' : '#ddd';
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillText(e.name, sx, sy - r - 10);
+    // Labels + HP bar — only render when inside fog vision
+    if (labelAlpha > 0) {
+      ctx.save();
+      ctx.globalAlpha = (ctx.globalAlpha || 1) * labelAlpha;
 
-    // HP bar
-    const barW = isBoss ? 80 : isElite ? 50 : 36;
-    const barH = isBoss ? 7 : 5;
-    const barX = sx - barW / 2;
-    const barY = sy - r - 8;
-    const hpPct = Math.max(0, e.hp / e.maxHp);
+      // Name
+      ctx.font = `bold ${isBoss ? 11 : 9}px Cinzel, serif`;
+      ctx.fillStyle = isBoss ? '#ff9800' : isElite ? '#ffd700' : '#ddd';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText(e.name, sx, sy - r - 10);
 
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(barX, barY, barW, barH);
-    ctx.fillStyle = hpPct > 0.5 ? '#4caf50' : hpPct > 0.25 ? '#ff9800' : '#f44336';
-    ctx.fillRect(barX, barY, barW * hpPct, barH);
+      // HP bar
+      const barW = isBoss ? 80 : isElite ? 50 : 36;
+      const barH = isBoss ? 7 : 5;
+      const barX = sx - barW / 2;
+      const barY = sy - r - 8;
+      const hpPct = Math.max(0, e.hp / e.maxHp);
 
-    // Boss tier label
-    if (isBoss) {
-      ctx.font = 'bold 8px Cinzel, serif';
-      ctx.fillStyle = '#ff9800';
-      ctx.fillText('⚠ BOSS', sx, sy - r - 22);
-    } else if (isElite) {
-      ctx.font = 'bold 8px Cinzel, serif';
-      ctx.fillStyle = '#ffd700';
-      ctx.fillText('★ ELITE', sx, sy - r - 18);
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(barX, barY, barW, barH);
+      ctx.fillStyle = hpPct > 0.5 ? '#4caf50' : hpPct > 0.25 ? '#ff9800' : '#f44336';
+      ctx.fillRect(barX, barY, barW * hpPct, barH);
+
+      // Boss / elite tier label
+      if (isBoss) {
+        ctx.font = 'bold 8px Cinzel, serif';
+        ctx.fillStyle = '#ff9800';
+        ctx.fillText('⚠ BOSS', sx, sy - r - 22);
+      } else if (isElite) {
+        ctx.font = 'bold 8px Cinzel, serif';
+        ctx.fillStyle = '#ffd700';
+        ctx.fillText('★ ELITE', sx, sy - r - 18);
+      }
+
+      ctx.restore();
     }
 
     ctx.restore();

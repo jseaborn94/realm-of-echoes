@@ -2,6 +2,7 @@ import {
   TILE_SIZE, WORLD_COLS, WORLD_ROWS, WORLD_WIDTH, WORLD_HEIGHT,
   PLAYER_SPEED, FOG_RADIUS, getLevelTierColor, xpForLevel, getZoneAt
 } from './constants.js';
+// FOG_RADIUS is in screen pixels (used for fog draw + visibility culling of labels)
 import { WorldGenerator, TILE_COLORS, TILE, OBJ } from './WorldGenerator.js';
 import { EnemyManager } from './EnemyManager.js';
 import { GatheringSystem, addResourcesToInventory } from './GatheringSystem.js';
@@ -481,11 +482,11 @@ export class GameEngine {
     // Draw objects
     this._drawObjects(ctx, wcamX, wcamY);
 
-    // Draw NPCs
-    this._drawNPCs(ctx, wcamX, wcamY);
+    // Draw NPCs (pass player screen pos for fog visibility check)
+    this._drawNPCs(ctx, wcamX, wcamY, W / z / 2, H / z / 2);
 
-    // Draw enemies (ctx is already scaled by z, pass world-space cam)
-    this.enemyManager.draw(ctx, wcamX, wcamY);
+    // Draw enemies (ctx is already scaled by z, pass world-space cam + player screen pos for fog check)
+    this.enemyManager.draw(ctx, wcamX, wcamY, W / z / 2, H / z / 2, FOG_RADIUS / this.zoom);
 
     // Draw gathering nodes (ctx is already scaled by z, pass world-space cam)
     this.gatheringSystem.draw(ctx, wcamX, wcamY);
@@ -646,12 +647,20 @@ export class GameEngine {
     ctx.restore();
   }
 
-  _drawNPCs(ctx, wcamX, wcamY) {
+  _drawNPCs(ctx, wcamX, wcamY, playerSX, playerSY) {
+    // fogRadiusWorld = fog screen radius converted back to world-space for distance check
+    const fogRadiusWorld = FOG_RADIUS / this.zoom;
     for (const npc of this.world.npcs) {
       const sx = npc.col * TILE_SIZE - wcamX + TILE_SIZE / 2;
       const sy = npc.row * TILE_SIZE - wcamY + TILE_SIZE / 2;
 
-      // Body
+      // Distance from player in world-space (ctx is scaled so sx/sy are world-space coords)
+      const distFromPlayer = Math.sqrt((sx - playerSX) ** 2 + (sy - playerSY) ** 2);
+      const inVision = distFromPlayer < fogRadiusWorld;
+      // Smooth fade based on distance (1=fully visible, 0=hidden)
+      const visAlpha = Math.max(0, Math.min(1, 1 - (distFromPlayer - fogRadiusWorld * 0.7) / (fogRadiusWorld * 0.3)));
+
+      // Body — always drawn (fog covers it visually)
       ctx.fillStyle = '#c8a060';
       ctx.beginPath();
       ctx.arc(sx, sy - 4, 9, 0, Math.PI * 2);
@@ -659,16 +668,19 @@ export class GameEngine {
       ctx.fillStyle = '#6a3a1a';
       ctx.fillRect(sx - 8, sy + 4, 16, 14);
 
-      // Name
-      ctx.font = 'bold 10px Cinzel, serif';
-      ctx.fillStyle = '#ffe88a';
-      ctx.textAlign = 'center';
-      ctx.fillText(npc.name, sx, sy - 18);
-
-      // Talk bubble indicator
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '10px serif';
-      ctx.fillText('💬', sx + 8, sy - 18);
+      // Labels — only when inside vision
+      if (visAlpha > 0) {
+        ctx.save();
+        ctx.globalAlpha = visAlpha;
+        ctx.font = 'bold 10px Cinzel, serif';
+        ctx.fillStyle = '#ffe88a';
+        ctx.textAlign = 'center';
+        ctx.fillText(npc.name, sx, sy - 18);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '10px serif';
+        ctx.fillText('💬', sx + 8, sy - 18);
+        ctx.restore();
+      }
     }
   }
 
@@ -787,10 +799,12 @@ export class GameEngine {
     // Punch a soft transparent circle where the player can see
     fctx.globalCompositeOperation = 'destination-out';
     const grad = fctx.createRadialGradient(px, py, 0, px, py, radius);
-    grad.addColorStop(0,    'rgba(0,0,0,1)');   // fully clear at center
-    grad.addColorStop(0.65, 'rgba(0,0,0,0.95)');
-    grad.addColorStop(0.85, 'rgba(0,0,0,0.4)');
-    grad.addColorStop(1,    'rgba(0,0,0,0)');   // fog fully returns at edge
+    grad.addColorStop(0,    'rgba(0,0,0,1)');    // fully clear at center
+    grad.addColorStop(0.55, 'rgba(0,0,0,1)');    // stays clear well into vision
+    grad.addColorStop(0.72, 'rgba(0,0,0,0.88)'); // begin soft fade
+    grad.addColorStop(0.84, 'rgba(0,0,0,0.55)'); // mid fade
+    grad.addColorStop(0.93, 'rgba(0,0,0,0.18)'); // nearly fog
+    grad.addColorStop(1,    'rgba(0,0,0,0)');     // fog fully returns at edge
     fctx.fillStyle = grad;
     fctx.fillRect(0, 0, W, H);
     fctx.globalCompositeOperation = 'source-over';
