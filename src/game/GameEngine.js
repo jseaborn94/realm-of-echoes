@@ -460,14 +460,17 @@ export class GameEngine {
     if (!ability) return;
 
     const cost = ability.mpCost || 0;
-    gs.mp -= cost;
-
     const skillLevel = gs.skillLevels?.[key] || 0;
     const classAtk = gs.classData?.baseStats?.attack || 20;
     const equipAtk = gs.equipStats?.attack || 0;
 
     if (ability.type !== 'utility') {
-      const hits = this.enemyManager.applyAbilityDamage(this.px, this.py, ability.type, skillLevel, classAtk, equipAtk);
+      // Use targeted position as the cast origin for aimed skills (line/aoe/ultimate)
+      // This ensures enemies in the aimed direction are hit, not just nearest to player
+      const hits = this.enemyManager.applyAbilityDamage(
+        this.px, this.py, ability.type, skillLevel, classAtk, equipAtk, targetX, targetY
+      );
+
       for (const hit of hits) {
         this.damageNumbers.push({
           x: hit.x + (Math.random() - 0.5) * 30,
@@ -482,7 +485,8 @@ export class GameEngine {
           this.damageNumbers.push({ x: hit.x, y: hit.y - 30, text: 'SLAIN!', color: '#ffe74a', life: 1.5, big: false });
         }
       }
-      // Visual effect at the targeted position
+
+      // Visual effect at the targeted position — always fires so cast feels responsive
       this.effects.push({
         x: targetX,
         y: targetY,
@@ -490,12 +494,12 @@ export class GameEngine {
         life: 0.5, maxLife: 0.5,
         color: gs.classData?.color || '#ffffff',
       });
-    }
-
-    if (ability.type === 'utility') {
+    } else {
       this.damageNumbers.push({ x: this.px, y: this.py - 30, text: ability.name + '!', color: '#4caf50', life: 1.0 });
     }
 
+    // Consume MP and cooldown only after successful execution
+    gs.mp -= cost;
     this.cooldowns[key] = this.skillCooldownMax[key];
     this.onStateUpdate({ ...gs });
   }

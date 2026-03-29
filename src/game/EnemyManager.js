@@ -441,31 +441,57 @@ export class EnemyManager {
     return false;
   }
 
-  applyAbilityDamage(px, py, abilityType, skillLevel, classAtk, equipAtk) {
+  applyAbilityDamage(px, py, abilityType, skillLevel, classAtk, equipAtk, targetX, targetY) {
     const totalAtk = classAtk + equipAtk;
     const lvlBonus = 1 + skillLevel * 0.3;
     const results = [];
 
-    let hitRadius, baseMult;
-    if (abilityType === 'single')        { hitRadius = 90;  baseMult = 1.2 + Math.random() * 0.4; }
-    else if (abilityType === 'aoe')      { hitRadius = 160; baseMult = 0.8 + Math.random() * 0.3; }
-    else if (abilityType === 'ultimate') { hitRadius = 200; baseMult = 2.5 + Math.random() * 0.5; }
+    // Use aimed target position if provided, otherwise fall back to player pos
+    const tx = targetX !== undefined ? targetX : px;
+    const ty = targetY !== undefined ? targetY : py;
+
+    let baseMult;
+    if (abilityType === 'single')        { baseMult = 1.2 + Math.random() * 0.4; }
+    else if (abilityType === 'aoe')      { baseMult = 0.8 + Math.random() * 0.3; }
+    else if (abilityType === 'ultimate') { baseMult = 2.5 + Math.random() * 0.5; }
     else return results;
+
+    // Direction vector from player to target (for line/single skills)
+    const dirDx = tx - px;
+    const dirDy = ty - py;
+    const dirLen = Math.sqrt(dirDx * dirDx + dirDy * dirDy) || 1;
+    const dirNx = dirDx / dirLen;
+    const dirNy = dirDy / dirLen;
 
     for (const e of this.enemies) {
       if (e.dead) continue;
-      const dx = e.x - px, dy = e.y - py;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+      const ex = e.x - px, ey = e.y - py;
+      const distFromPlayer = Math.sqrt(ex * ex + ey * ey);
+
+      let inHitZone = false;
 
       if (abilityType === 'single') {
-        if (dist > hitRadius) continue;
-        const closest = this.enemies
-          .filter(x => !x.dead && Math.sqrt((x.x - px) ** 2 + (x.y - py) ** 2) < hitRadius)
-          .sort((a, b) => Math.sqrt((a.x - px) ** 2 + (a.y - py) ** 2) - Math.sqrt((b.x - px) ** 2 + (b.y - py) ** 2))[0];
-        if (e !== closest) continue;
-      } else {
-        if (dist > hitRadius) continue;
+        // Line/projectile hit: enemy must be within a cone/rectangle toward target
+        // Project enemy onto the aim direction
+        const proj = ex * dirNx + ey * dirNy; // distance along aim axis
+        const perp = Math.abs(ex * (-dirNy) + ey * dirNx); // distance perpendicular
+        const maxRange = Math.max(dirLen * 1.1, 90); // at least 90px, up to aimed range + 10%
+        inHitZone = proj >= -16 && proj <= maxRange && perp <= 28 && distFromPlayer <= maxRange;
+
+      } else if (abilityType === 'aoe') {
+        // Circle centered on target
+        const dtx = e.x - tx, dty = e.y - ty;
+        const distFromTarget = Math.sqrt(dtx * dtx + dty * dty);
+        inHitZone = distFromTarget <= 160;
+
+      } else if (abilityType === 'ultimate') {
+        // Large circle centered on target
+        const dtx = e.x - tx, dty = e.y - ty;
+        const distFromTarget = Math.sqrt(dtx * dtx + dty * dty);
+        inHitZone = distFromTarget <= 200;
       }
+
+      if (!inHitZone) continue;
 
       const raw = Math.floor(totalAtk * baseMult * lvlBonus);
       const dmg = Math.max(1, raw - Math.floor(e.def * 0.5));
