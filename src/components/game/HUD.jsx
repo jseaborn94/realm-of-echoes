@@ -1,5 +1,5 @@
 import React from 'react';
-import { getLevelTierColor, xpForLevel } from '../../game/constants.js';
+import { getLevelTierColor, getLevelBracketColor, xpForLevel } from '../../game/constants.js';
 import MiniMap from './MiniMap.jsx';
 import UIBarRenderer from './UIBarRenderer.jsx';
 
@@ -22,18 +22,20 @@ function StatBar({ value, max, className, style, barType = 'small' }) {
   );
 }
 
-function AbilitySlot({ keyLabel, ability, cooldown, maxCooldown, level, classColor, onClick }) {
+function AbilitySlot({ keyLabel, ability, cooldown, maxCooldown, level, classColor, bracketColor, onClick }) {
   const pct = maxCooldown > 0 ? cooldown / maxCooldown : 0;
   const isOnCD = cooldown > 0;
   const isLocked = level === 0; // 0/5 = locked, unusable
+  // Use bracket color for visual indicators
+  const indicatorColor = bracketColor || classColor;
 
   return (
     <div className="flex flex-col items-center gap-0.5" onClick={onClick} style={{ cursor: isLocked ? 'default' : 'pointer' }}>
       <div className="relative w-12 h-12 rounded-lg overflow-hidden"
         style={{
-          background: isLocked ? 'rgba(0,0,0,0.6)' : isOnCD ? 'rgba(0,0,0,0.7)' : `${classColor}22`,
-          border: `2px solid ${isLocked ? 'rgba(255,255,255,0.08)' : isOnCD ? 'rgba(255,255,255,0.15)' : classColor}`,
-          boxShadow: isLocked || isOnCD ? 'none' : `0 0 8px ${classColor}44`,
+          background: isLocked ? 'rgba(0,0,0,0.6)' : isOnCD ? 'rgba(0,0,0,0.7)' : `${indicatorColor}22`,
+          border: `2px solid ${isLocked ? 'rgba(255,255,255,0.08)' : isOnCD ? 'rgba(255,255,255,0.15)' : indicatorColor}`,
+          boxShadow: isLocked || isOnCD ? 'none' : `0 0 8px ${indicatorColor}44`,
           opacity: isLocked ? 0.5 : 1,
         }}>
         {/* Ability icon or lock icon */}
@@ -71,7 +73,7 @@ function AbilitySlot({ keyLabel, ability, cooldown, maxCooldown, level, classCol
         )}
       </div>
 
-      <span className="font-cinzel text-xs" style={{ color: isLocked ? '#3a2a1a' : classColor, fontWeight: 'bold' }}>{keyLabel}</span>
+      <span className="font-cinzel text-xs" style={{ color: isLocked ? '#3a2a1a' : indicatorColor, fontWeight: 'bold' }}>{keyLabel}</span>
       <span className="text-center leading-none" style={{ color: isLocked ? '#2a1a0a' : '#6a5a3a', fontSize: '8px', maxWidth: '48px' }}>
         {isLocked ? 'locked' : ability?.name?.split(' ').slice(0, 2).join(' ')}
       </span>
@@ -115,9 +117,9 @@ export default function HUD({ gameState, onOpenInventory, onOpenSkills }) {
 
   const { level, hp, maxHp, mp, maxMp, xp, classData, skillPoints, cooldowns, skillLevels, potionCooldowns } = gameState;
   const tier = getLevelTierColor(level);
+  const bracketColor = getLevelBracketColor(level);
   const xpNeeded = xpForLevel(level);
   const xpPct = Math.min(100, (xp / xpNeeded) * 100);
-  const color = classData.color;
   const abilities = classData.abilities;
   const cdMax = { Q: 3000, W: 5000, E: 7000, R: 20000 };
   const POTION_CD = 30000;
@@ -215,7 +217,8 @@ export default function HUD({ gameState, onOpenInventory, onOpenSkills }) {
               cooldown={cooldowns?.[key] || 0}
               maxCooldown={cdMax[key]}
               level={skillLevels?.[key] || 0}
-              classColor={color}
+              classColor={classData.color}
+              bracketColor={bracketColor}
             />
           ))}
 
@@ -237,7 +240,8 @@ export default function HUD({ gameState, onOpenInventory, onOpenSkills }) {
                 cooldown={cooldowns?.R || 0}
                 maxCooldown={cdMax.R}
                 level={skillLevels?.R || 1}
-                classColor="#ff9800"
+                classColor={classData.color}
+                bracketColor={bracketColor}
               />
             )}
           </div>

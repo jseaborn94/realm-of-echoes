@@ -25,6 +25,15 @@ export function getLevelTierColor(level) {
   return LEVEL_TIER_COLORS.blue;
 }
 
+// Player level-bracket color (for visuals, not class-tied)
+export function getLevelBracketColor(level) {
+  if (level >= 60) return '#1a1a2e';        // Black — Level 60 (max)
+  if (level >= 40) return '#c44aff';        // Purple — Levels 40–59
+  if (level >= 20) return '#ffe74a';        // Yellow — Levels 20–39
+  if (level >= 10) return '#ff4a4a';        // Red — Levels 10–19
+  return '#4a9eff';                         // Blue — Levels 1–9
+}
+
 export function xpForLevel(level) {
   return Math.floor(100 * Math.pow(1.35, level - 1));
 }

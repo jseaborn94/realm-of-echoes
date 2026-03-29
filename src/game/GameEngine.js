@@ -1,6 +1,6 @@
 import {
   TILE_SIZE, WORLD_COLS, WORLD_ROWS, WORLD_WIDTH, WORLD_HEIGHT,
-  PLAYER_SPEED, FOG_RADIUS, getLevelTierColor, xpForLevel, getZoneAt
+  PLAYER_SPEED, FOG_RADIUS, getLevelTierColor, getLevelBracketColor, xpForLevel, getZoneAt
 } from './constants.js';
 import { registryManager } from './RegistryManager.js';
 // FOG_RADIUS is in screen pixels (used for fog draw + visibility culling of labels)
@@ -1079,7 +1079,8 @@ export class GameEngine {
 
     // Get animation state and facing direction
     const classId = gs.classData?.id || 'warrior';
-    const color = gs.classData?.spriteColor || 'blue';
+    // Use level-bracket color for visual progression
+    const color = getLevelBracketColor(gs.level);
     // Determine animation state: attack takes priority, then movement, else idle
     let animState = 'idle';
     if (this.attackAnimationTimer > 0) {
