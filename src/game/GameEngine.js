@@ -3,6 +3,7 @@ import {
   PLAYER_SPEED, FOG_RADIUS, getLevelTierColor, getLevelBracketColor, xpForLevel, getZoneAt
 } from './constants.js';
 import { registryManager } from './RegistryManager.js';
+import { SpriteDebugRenderer } from './SpriteDebugRenderer.js';
 // FOG_RADIUS is in screen pixels (used for fog draw + visibility culling of labels)
 import { WorldGenerator, TILE_COLORS, TILE, OBJ } from './WorldGenerator.js';
 import { EnemyManager } from './EnemyManager.js';
@@ -89,6 +90,9 @@ export class GameEngine {
     // Animation state tracking
     this.attackAnimationTimer = 0; // Duration of attack visual state
     this.ATTACK_ANIM_DURATION = 0.15; // seconds
+
+    // Debug sprite renderer (test PNGs in live world)
+    this.debugRenderer = new SpriteDebugRenderer(assetIntegration);
 
     this._bindKeys();
     this._resize();
@@ -908,6 +912,32 @@ export class GameEngine {
     }
 
     ctx.restore(); // end zoom transform
+
+    // DEBUG: Force-draw test sprites to verify PNG rendering works
+    // This is temporary - to prove the render path can draw PNG assets
+    if (this.debugRenderer) {
+      // Find one NPC for test draw
+      const testNPC = this.world.npcs.find(n => n.name === 'Captain Aldric');
+      if (testNPC) {
+        const npcScreenX = testNPC.col * TILE_SIZE * z - this.camX + TILE_SIZE / 2 * z;
+        const npcScreenY = testNPC.row * TILE_SIZE * z - this.camY + TILE_SIZE / 2 * z;
+        this.debugRenderer.drawTestNPCSprite(ctx, npcScreenX, npcScreenY);
+      }
+
+      // Find one enemy for test draw
+      if (this.enemyManager.enemies.length > 0) {
+        const testEnemy = this.enemyManager.enemies[0];
+        const enemyScreenX = testEnemy.x * z - this.camX;
+        const enemyScreenY = testEnemy.y * z - this.camY;
+        this.debugRenderer.drawTestEnemySprite(ctx, enemyScreenX, enemyScreenY);
+      }
+
+      // Draw test player sprite at screen center
+      this.debugRenderer.drawTestPlayerSprite(ctx, W / 2, H / 2);
+
+      // Draw debug labels
+      this.debugRenderer.drawDebugLabels(ctx, W, H);
+    }
 
     // Fog of war — drawn in screen space on top
     this._drawFog(ctx, W, H);

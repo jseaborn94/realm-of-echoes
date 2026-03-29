@@ -209,9 +209,23 @@ export default function Game() {
     // Give canvas time to render, then preload assets before starting engine
     const timer = setTimeout(async () => {
       try {
+        console.log('[Game] ===== STARTING GAME ENGINE =====');
         console.log('[Game] Starting asset preload...');
         const preloader = new AssetPreloader(assetIntegration);
         const preloadResult = await preloader.preloadAll();
+        
+        console.log(`[Game] Preload result: ${preloadResult.preloaded} loaded, ${preloadResult.failed} failed`);
+        
+        // Log cache status for test sprites
+        const testUrls = [
+          'https://raw.githubusercontent.com/jseaborn94/Realm-of-Echoes-Assets/main/assets/Units/Blue Units/Warrior/Warrior_Idle.png',
+          'https://raw.githubusercontent.com/jseaborn94/Realm-of-Echoes-Assets/main/assets/Units/Black Units/Warrior/Warrior_Idle.png',
+          'https://raw.githubusercontent.com/jseaborn94/Realm-of-Echoes-Assets/main/assets/Enemy Pack/Bear/Bear_Idle.png',
+        ];
+        testUrls.forEach(url => {
+          const cached = assetIntegration.imageCache.has(url);
+          console.log(`[Game] Test sprite cached: ${cached ? '✓' : '✗'} ${url.split('/').pop()}`);
+        });
         
         if (!preloadResult.success) {
           console.warn(`[Game] Preload complete with ${preloadResult.failed} failures`);

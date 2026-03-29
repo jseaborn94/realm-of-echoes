@@ -44,6 +44,11 @@ export class AssetPreloader {
   _getRequiredUrls() {
     const urls = new Set();
 
+    // HARDCODED TEST SPRITES (must be preloaded for debug renderer)
+    urls.add('https://raw.githubusercontent.com/jseaborn94/Realm-of-Echoes-Assets/main/assets/Units/Blue Units/Warrior/Warrior_Idle.png');
+    urls.add('https://raw.githubusercontent.com/jseaborn94/Realm-of-Echoes-Assets/main/assets/Units/Black Units/Warrior/Warrior_Idle.png');
+    urls.add('https://raw.githubusercontent.com/jseaborn94/Realm-of-Echoes-Assets/main/assets/Enemy Pack/Bear/Bear_Idle.png');
+
     // Player sprites - all class/color combinations
     for (const [classKey, classSprites] of Object.entries(PLAYER_SPRITES)) {
       if (typeof classSprites === 'object') {
@@ -55,16 +60,20 @@ export class AssetPreloader {
 
     // Enemy sprites - common enemy types
     const commonEnemies = [
-      'bear', 'gnoll', 'spider', 'snake', 'lancer', 'thief', 'skeleton',
-      'viper', 'turtle', 'lizard', 'shaman', 'panda', 'alpha_skull',
-      'harpoonfish', 'gnome', 'troll', 'wraith', 'golem', 'warlord',
-      'frost_witch', 'frost_bear', 'shadow_panda', 'ogre', 'dummy'
+      'bear', 'gnoll', 'spider', 'snake', 'lancer', 'thief', 'skull',
+      'turtle', 'lizard', 'shaman', 'panda',
+      'harpoonfish', 'gnome', 'troll', 'paddlefish', 'minotaur'
     ];
 
     for (const enemyType of commonEnemies) {
       if (ENEMY_SPRITES[enemyType]) {
-        const spriteUrl = ENEMY_SPRITES[enemyType];
-        if (typeof spriteUrl === 'string') urls.add(spriteUrl);
+        const spriteData = ENEMY_SPRITES[enemyType];
+        if (typeof spriteData === 'object') {
+          // Extract URLs from nested structure
+          for (const url of Object.values(spriteData)) {
+            if (typeof url === 'string') urls.add(url);
+          }
+        }
       }
     }
 
