@@ -197,6 +197,29 @@ export default function GMPanel({
         </button>
       </div>
 
+      {/* Quick Test Toolbar */}
+      <div className="mb-2 p-2 bg-yellow-900/20 border border-yellow-600/40 rounded">
+        <div className="text-yellow-400 font-bold text-xs mb-1">⚡ QUICK TEST</div>
+        <div className="grid grid-cols-5 gap-1">
+          <QuickButton onClick={healFull}>Heal</QuickButton>
+          <QuickButton onClick={() => setLevel(gameState.level + 1)}>+Level</QuickButton>
+          <QuickButton onClick={() => updateState({ isInvincible: !gameState.isInvincible })}>God Mode</QuickButton>
+          <QuickButton onClick={() => updateState({ _debugGear: !gameState._debugGear })}>Gear Debug</QuickButton>
+          <QuickButton onClick={() => updateState({ testLootMode: !gameState.testLootMode })}>Loot Debug</QuickButton>
+          <QuickButton onClick={spawnNearby}>+Enemy</QuickButton>
+          <QuickButton onClick={() => { for (let i = 0; i < 5; i++) spawnNearby(); }}>+5 Enemies</QuickButton>
+          <QuickButton onClick={killNearby}>Kill All</QuickButton>
+          <QuickButton onClick={() => {
+            const item = { id: 'test_w_upgrade', name: 'Weapon (+8)', slot: 'weapon', rarity: 'epic', icon: '⚔️', stats: { attack: 28 } };
+            updateState({ inventory: [...(gameState.inventory || []), item] });
+          }}>Wpn Upgrade</QuickButton>
+          <QuickButton onClick={() => {
+            const item = { id: 'test_a_upgrade', name: 'Armor (+6)', slot: 'chest', rarity: 'epic', icon: '🧥', stats: { defense: 24 } };
+            updateState({ inventory: [...(gameState.inventory || []), item] });
+          }}>Armor Upgrade</QuickButton>
+        </div>
+      </div>
+
       {/* Player Section */}
       <Section
         title="1. PLAYER"
@@ -334,6 +357,17 @@ function Button({ children, onClick }) {
     <button
       onClick={onClick}
       className="w-full px-2 py-0.5 bg-yellow-600/20 hover:bg-yellow-600/40 border border-yellow-600/50 text-yellow-100 rounded text-xs transition"
+    >
+      {children}
+    </button>
+  );
+}
+
+function QuickButton({ children, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="px-1.5 py-1 bg-yellow-700/40 hover:bg-yellow-600/60 border border-yellow-600/70 text-yellow-100 rounded text-xs font-bold transition"
     >
       {children}
     </button>
