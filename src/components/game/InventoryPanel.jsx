@@ -1,18 +1,12 @@
 import React, { useState } from 'react';
-import { EQUIP_SLOTS, RARITY_COLORS } from '../../game/constants.js';
+import { RARITY_COLORS } from '../../game/constants.js';
 import { motion, AnimatePresence } from 'framer-motion';
+import EquipmentPanel from './EquipmentPanel.jsx';
 
 const SLOT_ICONS = {
-  helmet: '⛑️',
-  chest: '🧥',
-  pants: '👖',
-  gloves: '🧤',
-  boots: '👢',
-  weapon: '⚔️',
-  shield: '🛡️',
+  helmet: '⛑️', chest: '🧥', pants: '👖', gloves: '🧤', boots: '👢',
+  weapon: '⚔️', shield: '🛡️', ring1: '💍', ring2: '💍', amulet: '📿'
 };
-
-const CLASS_LABEL = { warrior: 'Warrior', lancer: 'Lancer', archer: 'Archer', monk: 'Monk' };
 
 function ItemTooltip({ item, isOffClass }) {
   if (!item) return null;
@@ -199,9 +193,6 @@ export default function InventoryPanel({ gameState, onClose, onEquip, onUnequip,
   }
   const bagItems = [...gearItems, ...Object.values(resourceMap)];
 
-  const leftSlots  = ['helmet', 'chest', 'pants', 'gloves', 'boots'];
-  const rightSlots = ['weapon', 'shield'];
-
   return (
     <AnimatePresence>
       <motion.div
@@ -216,12 +207,12 @@ export default function InventoryPanel({ gameState, onClose, onEquip, onUnequip,
           initial={{ scale: 0.9, y: 20 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.9, y: 20 }}
-          className="panel-glass-gold rounded-xl p-5 w-full max-w-2xl"
+          className="panel-glass-gold rounded-xl p-6 w-full max-w-6xl"
           style={{ maxHeight: '90vh', overflowY: 'auto' }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-cinzel font-bold text-xl" style={{ color: '#ffe88a' }}>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-cinzel font-bold text-2xl" style={{ color: '#ffe88a' }}>
               🎒 Inventory & Equipment
             </h2>
             <button onClick={onClose} className="font-cinzel text-sm px-3 py-1 rounded"
@@ -230,94 +221,38 @@ export default function InventoryPanel({ gameState, onClose, onEquip, onUnequip,
             </button>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            {/* Left: Equip slots */}
-            <div className="space-y-2">
-              <div className="font-cinzel text-xs mb-2" style={{ color: '#6a5a3a' }}>EQUIPMENT</div>
-              {leftSlots.map(slot => (
-                <EquipSlot
-                  key={slot}
-                  slot={slot}
-                  item={equipped[slot]}
-                  isWarrior={isWarrior}
-                  classId={classId}
-                  onDrop={(item, s) => onEquip(item, s)}
-                  onUnequip={onUnequip}
-                />
-              ))}
+          <div className="grid grid-cols-4 gap-6">
+            {/* Left: Equipment Panel */}
+            <div className="col-span-1">
+              <EquipmentPanel
+                gameState={gameState}
+                equipped={equipped}
+                onEquip={onEquip}
+                onUnequip={onUnequip}
+              />
             </div>
 
-            {/* Center: Character preview + stats */}
-            <div className="flex flex-col items-center gap-3">
-              <div className="relative w-28 h-40 rounded-xl flex items-center justify-center"
-                style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,232,138,0.15)' }}>
-                <div className="text-center">
-                  <div className="text-5xl mb-2">{classData?.icon}</div>
-                  <div className="font-cinzel text-xs" style={{ color: classData?.color }}>{classData?.name}</div>
-                  <div className="font-cinzel text-xs" style={{ color: '#5a4a2a' }}>Lv. {gameState.level}</div>
-                </div>
-              </div>
+            {/* Right: Inventory Bag */}
+            <div className="col-span-3">
 
-              {/* Stats */}
-              <div className="w-full space-y-1.5 p-3 rounded-lg" style={{ background: 'rgba(0,0,0,0.3)' }}>
-                <div className="font-cinzel text-xs mb-2" style={{ color: '#6a5a3a' }}>BASE STATS</div>
-                {[
-                  { label: 'ATK', val: totalStats.attack, color: '#e63946' },
-                  { label: 'DEF', val: totalStats.defense, color: '#4a9eff' },
-                  { label: 'HP',  val: totalStats.hp, color: '#4caf50' },
-                  { label: 'MP',  val: totalStats.mp, color: '#9c27b0' },
-                ].map(s => (
-                  <div key={s.label} className="flex justify-between items-center">
-                    <span className="font-cinzel text-xs" style={{ color: '#5a4a2a' }}>{s.label}</span>
-                    <div className="flex items-center gap-1">
-                      {equipStats[s.label?.toLowerCase()] > 0 && (
-                        <span className="text-xs" style={{ color: '#4caf50', fontSize: '10px' }}>
-                          +{equipStats[s.label?.toLowerCase()]}
-                        </span>
-                      )}
-                      <span className="font-cinzel text-xs font-bold" style={{ color: s.color }}>{s.val}</span>
-                    </div>
-                  </div>
+              <div className="font-cinzel text-xs mb-3" style={{ color: '#6a5a3a' }}>
+                BACKPACK ({bagItems.length} items)
+              </div>
+              <div className="grid grid-cols-5 gap-2 p-4 rounded-lg min-h-64"
+                style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                {bagItems.map(item => (
+                  <InvItem key={item.id} item={item} classId={classId} onEquip={i => onEquip(i, i.slot)} onUse={onUseItem} />
                 ))}
+                {bagItems.length === 0 && (
+                  <div className="col-span-5 text-center py-8 font-cinzel text-xs" style={{ color: '#3a2a1a' }}>
+                    No items — explore and open chests!
+                  </div>
+                )}
               </div>
+              <p className="mt-3 text-xs" style={{ color: '#3a2a1a', fontFamily: 'Crimson Text, serif' }}>
+                💡 Drag items to equip slots on the left, or double-click to auto-equip/unequip
+              </p>
             </div>
-
-            {/* Right: Weapon/Shield + inventory bag */}
-            <div className="space-y-2">
-              <div className="font-cinzel text-xs mb-2" style={{ color: '#6a5a3a' }}>WEAPONS</div>
-              {rightSlots.map(slot => (
-                <EquipSlot
-                  key={slot}
-                  slot={slot}
-                  item={equipped[slot]}
-                  isWarrior={isWarrior}
-                  classId={classId}
-                  onDrop={(item, s) => onEquip(item, s)}
-                  onUnequip={onUnequip}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Bag */}
-          <div className="mt-4">
-            <div className="font-cinzel text-xs mb-2" style={{ color: '#6a5a3a' }}>
-              BAG ({bagItems.length} items)
-            </div>
-            <div className="grid grid-cols-6 gap-1.5 p-3 rounded-lg min-h-16"
-              style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}>
-              {bagItems.map(item => (
-                <InvItem key={item.id} item={item} classId={classId} onEquip={i => onEquip(i, i.slot)} onUse={onUseItem} />
-              ))}
-              {bagItems.length === 0 && (
-                <div className="col-span-6 text-center py-4 font-cinzel text-xs" style={{ color: '#3a2a1a' }}>
-                  No items — explore and open chests!
-                </div>
-              )}
-            </div>
-            <p className="mt-2 text-xs" style={{ color: '#3a2a1a', fontFamily: 'Crimson Text, serif' }}>
-              Drag items to equip slots, or double-click to auto-equip/unequip
-            </p>
           </div>
         </motion.div>
       </motion.div>
