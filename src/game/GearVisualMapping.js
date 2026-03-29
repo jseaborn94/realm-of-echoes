@@ -34,7 +34,7 @@ const GEAR_ANCHOR_POINTS = {
       attack: { offsetX: 6, offsetY: -2, scale: 0.65, flipWithChar: true },
     },
     shield: {
-      idle:   { offsetX: -6, offsetY: 2, scale: 0.6, flipWithChar: true },     // Compact shield
+      idle:   { offsetX: -6, offsetY: 2, scale: 0.6, flipWithChar: true },     // Offhand left side
       move:   { offsetX: -5, offsetY: 3, scale: 0.6, flipWithChar: true },
       attack: { offsetX: -4, offsetY: 0, scale: 0.6, flipWithChar: true },
     },
@@ -57,7 +57,7 @@ const GEAR_ANCHOR_POINTS = {
       attack: { offsetX: 8, offsetY: -4, scale: 0.75, flipWithChar: true },
     },
     shield: {
-      idle:   { offsetX: -8, offsetY: 2, scale: 0.8, flipWithChar: true },     // Compact shield
+      idle:   { offsetX: -8, offsetY: 2, scale: 0.8, flipWithChar: true },     // Offhand left side
       move:   { offsetX: -7, offsetY: 3, scale: 0.8, flipWithChar: true },
       attack: { offsetX: -6, offsetY: -2, scale: 0.8, flipWithChar: true },
     },
@@ -80,7 +80,7 @@ const GEAR_ANCHOR_POINTS = {
       attack: { offsetX: 4, offsetY: 2, scale: 1.0, flipWithChar: true },
     },
     shield: {
-      idle:   { offsetX: -6, offsetY: 2, scale: 0.7, flipWithChar: true },     // Smaller shield
+      idle:   { offsetX: -6, offsetY: 2, scale: 0.7, flipWithChar: true },     // Offhand left side
       move:   { offsetX: -5, offsetY: 3, scale: 0.7, flipWithChar: true },
       attack: { offsetX: -4, offsetY: 0, scale: 0.7, flipWithChar: true },
     },
@@ -103,7 +103,7 @@ const GEAR_ANCHOR_POINTS = {
       attack: { offsetX: 5, offsetY: -2, scale: 0.65, flipWithChar: true },
     },
     shield: {
-      idle:   { offsetX: -4, offsetY: 2, scale: 0.55, flipWithChar: true },    // Minimal shield
+      idle:   { offsetX: -4, offsetY: 2, scale: 0.55, flipWithChar: true },    // Offhand left side
       move:   { offsetX: -3, offsetY: 3, scale: 0.55, flipWithChar: true },
       attack: { offsetX: -3, offsetY: 0, scale: 0.55, flipWithChar: true },
     },

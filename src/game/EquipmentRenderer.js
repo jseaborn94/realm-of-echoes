@@ -58,12 +58,12 @@ export class EquipmentRenderer {
     // Get all visual mappings using gear visual system with animation state
     const visuals = getEquippedVisuals(equipped, classId, animState);
 
-    // Map layers to slots
+    // Map layers to slots — weapon layer draws shield then weapon to prevent clipping
     const layerSlots = {
       back: ['cape'],       // Future: back accessories
       chest: ['chest'],     // Chest armor
       helmet: ['helmet'],   // Head gear
-      weapon: ['weapon', 'shield'], // Held items
+      weapon: flipX > 0 ? ['shield', 'weapon'] : ['weapon', 'shield'], // Reverse order when facing left for correct depth
     };
 
     const slots = layerSlots[layer] || [];
@@ -78,8 +78,8 @@ export class EquipmentRenderer {
 
         ctx.save();
 
-        // Apply anchor-point positioning (offsetX, offsetY)
-        let x = screenX + visual.offsetX * flipX; // Scale offsetX by facing
+        // Calculate position: mirror offsetX when facing left to keep shield on left side
+        let x = screenX + visual.offsetX * flipX;
         let y = screenY + visual.offsetY;
         const scale = visual.scale;
         const w = img.width * scale;
@@ -87,7 +87,7 @@ export class EquipmentRenderer {
 
         // Flip horizontally with character if applicable
         if (visual.flipWithChar && flipX === -1) {
-          // Mirror horizontally around center
+          // Mirror horizontally around the calculated center point
           ctx.translate(x, y);
           ctx.scale(-1, 1);
           ctx.drawImage(img, -w / 2, -h / 2, w, h);
