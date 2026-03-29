@@ -5,7 +5,7 @@ export const WORLD_ROWS = 500;
 export const WORLD_WIDTH = WORLD_COLS * TILE_SIZE;
 export const WORLD_HEIGHT = WORLD_ROWS * TILE_SIZE;
 
-export const PLAYER_SPEED = 180; // px/sec
+export const PLAYER_SPEED = 135; // px/sec (~25% slower for better pacing)
 export const FOG_RADIUS = 420; // Vision radius in screen-pixels around the player
 
 // Level tier colors

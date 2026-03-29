@@ -72,16 +72,48 @@ function AbilitySlot({ keyLabel, ability, cooldown, maxCooldown, level, classCol
   );
 }
 
+function PotionSlot({ keyLabel, icon, color, cooldown, maxCooldown }) {
+  const pct = maxCooldown > 0 ? cooldown / maxCooldown : 0;
+  const isOnCD = cooldown > 0;
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <div className="relative w-11 h-11 rounded-lg overflow-hidden"
+        style={{
+          background: isOnCD ? 'rgba(0,0,0,0.7)' : `${color}22`,
+          border: `2px solid ${isOnCD ? 'rgba(255,255,255,0.12)' : color}`,
+          boxShadow: isOnCD ? 'none' : `0 0 10px ${color}55`,
+        }}>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span style={{ fontSize: '18px', filter: isOnCD ? 'grayscale(80%)' : 'none' }}>{icon}</span>
+        </div>
+        {isOnCD && (
+          <div className="absolute inset-0 flex items-end justify-center pb-0.5"
+            style={{ background: `rgba(0,0,0,${pct * 0.6})` }}>
+            <div className="absolute bottom-0 left-0 right-0"
+              style={{ height: `${pct * 100}%`, background: 'rgba(0,0,0,0.45)' }} />
+            <span className="relative z-10 text-white font-bold" style={{ fontSize: '9px', fontFamily: 'Cinzel, serif' }}>
+              {Math.ceil(cooldown / 1000)}s
+            </span>
+          </div>
+        )}
+      </div>
+      <span className="font-cinzel text-xs font-bold" style={{ color: isOnCD ? '#3a3a3a' : color }}>{keyLabel}</span>
+      <span style={{ color: '#4a3a2a', fontSize: '8px' }}>{icon === '🧪' ? 'HP' : 'MP'}</span>
+    </div>
+  );
+}
+
 export default function HUD({ gameState, onOpenInventory, onOpenSkills }) {
   if (!gameState || !gameState.classData) return null;
 
-  const { level, hp, maxHp, mp, maxMp, xp, classData, skillPoints, cooldowns, skillLevels } = gameState;
+  const { level, hp, maxHp, mp, maxMp, xp, classData, skillPoints, cooldowns, skillLevels, potionCooldowns } = gameState;
   const tier = getLevelTierColor(level);
   const xpNeeded = xpForLevel(level);
   const xpPct = Math.min(100, (xp / xpNeeded) * 100);
   const color = classData.color;
   const abilities = classData.abilities;
   const cdMax = { Q: 3000, W: 5000, E: 7000, R: 20000 };
+  const POTION_CD = 30000;
 
   return (
     <>
@@ -184,9 +216,19 @@ export default function HUD({ gameState, onOpenInventory, onOpenSkills }) {
             )}
           </div>
 
+          {/* Separator */}
+          <div className="w-px h-10 self-center" style={{ background: 'rgba(255,255,255,0.08)' }} />
+
+          {/* Potions */}
+          <PotionSlot keyLabel="1" icon="🧪" color="#e63946" cooldown={potionCooldowns?.hp || 0} maxCooldown={POTION_CD} />
+          <PotionSlot keyLabel="2" icon="💧" color="#4a9eff" cooldown={potionCooldowns?.mp || 0} maxCooldown={POTION_CD} />
+
+          {/* Separator */}
+          <div className="w-px h-10 self-center" style={{ background: 'rgba(255,255,255,0.08)' }} />
+
           {/* F interact */}
           <div className="flex flex-col items-center gap-0.5">
-            <div className="w-12 h-12 rounded-lg flex items-center justify-center"
+            <div className="w-11 h-11 rounded-lg flex items-center justify-center"
               style={{ background: 'rgba(255,255,255,0.04)', border: '2px solid rgba(255,255,255,0.12)' }}>
               <span style={{ fontSize: '18px' }}>🗣️</span>
             </div>

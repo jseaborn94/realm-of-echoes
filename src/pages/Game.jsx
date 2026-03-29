@@ -336,8 +336,8 @@ export default function Game() {
         style={{ color: '#2a1a0a' }}>
         <div>Click — Move</div>
         <div>QWER — Abilities</div>
-        <div>F — Interact</div>
-        <div>I — Inventory · K — Skills · M — Map</div>
+        <div>1 — HP Potion · 2 — MP Potion</div>
+        <div>F — Interact · I — Inv · K — Skills · M — Map</div>
       </div>
     </div>
   );

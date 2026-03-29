@@ -46,6 +46,10 @@ export class GameEngine {
     this.cooldowns = { Q: 0, W: 0, E: 0, R: 0 };
     this.skillCooldownMax = { Q: 3000, W: 5000, E: 7000, R: 20000 };
 
+    // Potion cooldowns (ms)
+    this.potionCooldowns = { hp: 0, mp: 0 };
+    this.POTION_CD = 30000;
+
     // NPC interaction
     this.nearNPC = null;
     this.nearChest = null;
@@ -65,6 +69,8 @@ export class GameEngine {
       if (k === 'w') this._useSkill('W');
       if (k === 'e') this._useSkill('E');
       if (k === 'r') this._useSkill('R');
+      if (k === '1') this._usePotion('hp');
+      if (k === '2') this._usePotion('mp');
       if (k === 'f') {
         if (this.nearNode && !this.nearNPC && !this.nearChest) {
           this.gatheringSystem.startHarvest(this.nearNode.id);
@@ -219,6 +225,9 @@ export class GameEngine {
     Object.keys(this.cooldowns).forEach(k => {
       if (this.cooldowns[k] > 0) this.cooldowns[k] = Math.max(0, this.cooldowns[k] - dt * 1000);
     });
+    // Potion cooldowns
+    if (this.potionCooldowns.hp > 0) this.potionCooldowns.hp = Math.max(0, this.potionCooldowns.hp - dt * 1000);
+    if (this.potionCooldowns.mp > 0) this.potionCooldowns.mp = Math.max(0, this.potionCooldowns.mp - dt * 1000);
 
     // HP regen
     if (gs.hp < gs.maxHp) {
@@ -321,7 +330,7 @@ export class GameEngine {
       this.damageNumbers.push({ x: this.px, y: this.py - 40, text: 'DEFEATED! Respawning...', color: '#ff4444', life: 3.0, big: true });
     }
 
-    this.onStateUpdate({ ...gs, cooldowns: { ...this.cooldowns }, nearNPC: this.nearNPC, nearChest: this.nearChest, nearNode: this.nearNode, playerWorldX: this.px, playerWorldY: this.py });
+    this.onStateUpdate({ ...gs, cooldowns: { ...this.cooldowns }, potionCooldowns: { ...this.potionCooldowns }, nearNPC: this.nearNPC, nearChest: this.nearChest, nearNode: this.nearNode, playerWorldX: this.px, playerWorldY: this.py });
   }
 
   _isBlocked(wx, wy) {
@@ -443,6 +452,25 @@ export class GameEngine {
         defense: slot !== 'weapon' ? Math.floor((3 + level) * (rarity === 'epic' ? 2 : rarity === 'rare' ? 1.5 : 1)) : 0,
       },
     };
+  }
+
+  _usePotion(type) {
+    const gs = this.gameState;
+    if (this.potionCooldowns[type] > 0) {
+      this.damageNumbers.push({ x: this.px, y: this.py - 30, text: `${Math.ceil(this.potionCooldowns[type] / 1000)}s`, color: type === 'hp' ? '#ff4444' : '#4a9eff', life: 1.0 });
+      return;
+    }
+    if (type === 'hp') {
+      const restore = Math.floor(gs.maxHp * 0.35);
+      gs.hp = Math.min(gs.maxHp, gs.hp + restore);
+      this.damageNumbers.push({ x: this.px, y: this.py - 40, text: `+${restore} HP`, color: '#ff4444', life: 1.5, big: false });
+    } else {
+      const restore = Math.floor(gs.maxMp * 0.50);
+      gs.mp = Math.min(gs.maxMp, gs.mp + restore);
+      this.damageNumbers.push({ x: this.px, y: this.py - 40, text: `+${restore} MP`, color: '#4a9eff', life: 1.5, big: false });
+    }
+    this.potionCooldowns[type] = this.POTION_CD;
+    this.onStateUpdate({ ...gs });
   }
 
   _gainXP(amount) {

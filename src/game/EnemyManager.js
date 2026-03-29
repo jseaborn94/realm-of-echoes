@@ -141,9 +141,9 @@ export class EnemyManager {
 
   _initialSpawn() {
     // Pack spawning per zone — zone 1 is sparse, zone 5 is dense
-    const ZONE_PACKS = { 1: 14, 2: 18, 3: 16, 4: 18, 5: 14 };
-    const PACK_SIZE  = { 1: [2,4], 2: [3,5], 3: [3,5], 4: [3,6], 5: [4,6] };
-    const ELITE_PACKS = { 1: 2, 2: 3, 3: 3, 4: 4, 5: 4 };
+    const ZONE_PACKS = { 1: 20, 2: 26, 3: 22, 4: 26, 5: 20 };
+    const PACK_SIZE  = { 1: [3,5], 2: [3,5], 3: [3,6], 4: [4,6], 5: [4,6] };
+    const ELITE_PACKS = { 1: 3, 2: 4, 3: 4, 4: 5, 5: 5 };
 
     // Spawn normal packs
     for (let zoneId = 1; zoneId <= 5; zoneId++) {
