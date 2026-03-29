@@ -92,7 +92,10 @@ export default function PauseMenu({ isOpen, onClose, onReturnToSelect, onLogout,
 
                 {/* Logout */}
                 <button
-                  onClick={onLogout}
+                  onClick={() => {
+                    onClose(); // Close menu first
+                    setTimeout(() => onLogout(), 100); // Then logout
+                  }}
                   className="w-full font-cinzel font-bold py-3 rounded-lg text-sm tracking-wider transition-all duration-200 hover:scale-[1.02]"
                   style={{
                     background: 'rgba(255,60,60,0.08)',

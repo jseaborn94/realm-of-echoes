@@ -57,6 +57,7 @@ export default function Game() {
   const [gameStarted, setGameStarted] = useState(false);
   const [gameState, setGameState] = useState(null);
   const activeCharIdRef = useRef(null); // tracks current character's save ID
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const [showInventory, setShowInventory] = useState(false);
   const [showSkills, setShowSkills] = useState(false);
@@ -133,7 +134,8 @@ export default function Game() {
   function handleLogout() {
     if (gameState) saveCurrentCharacter(gameState);
     if (engineRef.current) { engineRef.current.stop(); engineRef.current = null; }
-    base44.auth.logout();
+    setIsLoggingOut(true);
+    setTimeout(() => base44.auth.logout(), 200);
   }
 
   useEffect(() => {
@@ -348,6 +350,7 @@ export default function Game() {
         onSelect={startGame}
         onLoadCharacter={loadGame}
         onLogout={handleLogout}
+        isLoggingOut={isLoggingOut}
       />
     );
   }

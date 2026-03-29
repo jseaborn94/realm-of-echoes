@@ -3,7 +3,7 @@ import { CLASSES } from '../../game/constants.js';
 import { listCharacters, deleteCharacter } from '../../game/CharacterManager.js';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function ClassSelect({ onSelect, onLoadCharacter, onLogout }) {
+export default function ClassSelect({ onSelect, onLoadCharacter, onLogout, isLoggingOut = false }) {
   const [mode, setMode] = useState('list'); // 'list' | 'new'
   const [savedChars, setSavedChars] = useState([]);
   const [hovered, setHovered] = useState(null);
@@ -17,6 +17,11 @@ export default function ClassSelect({ onSelect, onLoadCharacter, onLogout }) {
     // If no saves, go straight to new character
     if (chars.length === 0) setMode('new');
   }, []);
+
+  // Logout handler
+  const handleLogout = () => {
+    if (onLogout) onLogout();
+  };
 
   function handleConfirmNew() {
     if (!selected) return;
@@ -128,10 +133,11 @@ export default function ClassSelect({ onSelect, onLoadCharacter, onLogout }) {
 
         {/* Logout */}
         <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
-          onClick={onLogout}
-          className="mt-8 relative z-10 font-cinzel text-xs px-6 py-2 rounded-lg transition-all"
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          className="mt-8 relative z-10 font-cinzel text-xs px-6 py-2 rounded-lg transition-all disabled:opacity-50"
           style={{ color: '#6a5a3a', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}>
-          ⏻ Logout
+          {isLoggingOut ? '⏳ Logging out...' : '⏻ Logout'}
         </motion.button>
       </div>
     );
