@@ -1,7 +1,10 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { CLASSES, STARTER_ITEMS, xpForLevel } from '@/game/constants.js';
+import { saveCharacter, loadCharacter } from '@/game/CharacterManager.js';
+import { base44 } from '@/api/base44Client';
 import { GameEngine } from '@/game/GameEngine.js';
 import ClassSelect from '@/components/game/ClassSelect.jsx';
+import PauseMenu from '@/components/game/PauseMenu.jsx';
 import HUD from '@/components/game/HUD.jsx';
 import InventoryPanel from '@/components/game/InventoryPanel.jsx';
 import SkillsPanel from '@/components/game/SkillsPanel.jsx';
@@ -53,10 +56,12 @@ export default function Game() {
 
   const [gameStarted, setGameStarted] = useState(false);
   const [gameState, setGameState] = useState(null);
+  const activeCharIdRef = useRef(null); // tracks current character's save ID
 
   const [showInventory, setShowInventory] = useState(false);
   const [showSkills, setShowSkills] = useState(false);
   const [showWorldMap, setShowWorldMap] = useState(false);
+  const [showPauseMenu, setShowPauseMenu] = useState(false);
   const [lootItem, setLootItem] = useState(null);
   const [craftingNPC, setCraftingNPC] = useState(null);
 
@@ -72,10 +77,63 @@ export default function Game() {
     });
   }, []);
 
+  // Save the current character state and return the charId
+  function saveCurrentCharacter(state) {
+    const gs = state || gameState;
+    if (!gs) return null;
+    const charId = saveCharacter(gs, activeCharIdRef.current);
+    activeCharIdRef.current = charId;
+    return charId;
+  }
+
+  // Start a brand-new character
   function startGame({ classId, playerName }) {
     const gs = initialGameState(classId, playerName);
+    activeCharIdRef.current = null; // new char — ID assigned on first save
     setGameState(gs);
     setGameStarted(true);
+  }
+
+  // Load an existing saved character
+  function loadGame(charId) {
+    const saved = loadCharacter(charId);
+    if (!saved) return;
+    activeCharIdRef.current = charId;
+    setGameState({
+      ...saved,
+      // Reset transient state
+      cooldowns: { Q: 0, W: 0, E: 0, R: 0 },
+      potionCooldowns: { hp: 0, mp: 0 },
+      nearNPC: null,
+      nearChest: null,
+      nearNode: null,
+      dialogueNPC: null,
+      dialogueIndex: 0,
+      lootFound: null,
+    });
+    setGameStarted(true);
+  }
+
+  // Return to character select — save first
+  function returnToSelect() {
+    if (gameState) saveCurrentCharacter(gameState);
+    if (engineRef.current) { engineRef.current.stop(); engineRef.current = null; }
+    setGameStarted(false);
+    setGameState(null);
+    setShowPauseMenu(false);
+    setShowInventory(false);
+    setShowSkills(false);
+    setShowWorldMap(false);
+    setLootItem(null);
+    setCraftingNPC(null);
+    activeCharIdRef.current = null;
+  }
+
+  // Logout
+  function handleLogout() {
+    if (gameState) saveCurrentCharacter(gameState);
+    if (engineRef.current) { engineRef.current.stop(); engineRef.current = null; }
+    base44.auth.logout();
   }
 
   useEffect(() => {
@@ -111,19 +169,35 @@ export default function Game() {
     }
   }, [gameState]);
 
+  // Auto-save every 60 seconds while playing
+  useEffect(() => {
+    if (!gameStarted) return;
+    const interval = setInterval(() => {
+      if (gameState) saveCurrentCharacter(gameState);
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [gameStarted, gameState]); // eslint-disable-line
+
   // Global keyboard handling for UI panels
   useEffect(() => {
     if (!gameStarted) return;
     const handler = (e) => {
       if (e.key === 'Escape') {
-        setShowInventory(false);
-        setShowSkills(false);
-        setShowWorldMap(false);
-        setCraftingNPC(null);
-        if (gameState?.dialogueNPC) {
-          setGameState(prev => ({ ...prev, dialogueNPC: null }));
+        // If any panel is open, close it first
+        if (showInventory || showSkills || showWorldMap || craftingNPC || gameState?.dialogueNPC) {
+          setShowInventory(false);
+          setShowSkills(false);
+          setShowWorldMap(false);
+          setCraftingNPC(null);
+          if (gameState?.dialogueNPC) setGameState(prev => ({ ...prev, dialogueNPC: null }));
+        } else {
+          // Toggle pause menu
+          setShowPauseMenu(v => !v);
         }
+        return;
       }
+      // Don't handle game keys when pause menu is open
+      if (showPauseMenu) return;
       if (e.key === 'i' || e.key === 'I') setShowInventory(v => !v);
       if (e.key === 'k' || e.key === 'K') setShowSkills(v => !v);
       if (e.key === 'm' || e.key === 'M') setShowWorldMap(v => !v);
@@ -149,7 +223,7 @@ export default function Game() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [gameStarted, gameState]);
+  }, [gameStarted, gameState, showInventory, showSkills, showWorldMap, craftingNPC, showPauseMenu]);
 
   function handleEquip(item, slot) {
     setGameState(prev => {
@@ -262,7 +336,13 @@ export default function Game() {
   }
 
   if (!gameStarted) {
-    return <ClassSelect onSelect={startGame} />;
+    return (
+      <ClassSelect
+        onSelect={startGame}
+        onLoadCharacter={loadGame}
+        onLogout={handleLogout}
+      />
+    );
   }
 
   return (
@@ -280,6 +360,29 @@ export default function Game() {
           gameState={gameState}
           onOpenInventory={() => setShowInventory(true)}
           onOpenSkills={() => setShowSkills(true)}
+        />
+      )}
+
+      {/* Pause menu button */}
+      <button
+        onClick={() => setShowPauseMenu(true)}
+        className="fixed top-3 right-3 z-40 font-cinzel text-xs px-3 py-2 rounded-lg panel-glass transition-all hover:border-yellow-500/40"
+        style={{ color: '#6a5a3a' }}
+      >
+        ☰ Menu
+      </button>
+
+      {/* Pause Menu */}
+      {gameState && (
+        <PauseMenu
+          isOpen={showPauseMenu}
+          onClose={() => setShowPauseMenu(false)}
+          onReturnToSelect={returnToSelect}
+          onLogout={handleLogout}
+          playerName={gameState.playerName}
+          level={gameState.level}
+          className={gameState.classData?.name}
+          classColor={gameState.classData?.color}
         />
       )}
 
