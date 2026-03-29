@@ -36,7 +36,7 @@ const initialGameState = (classId, playerName) => {
   const equipped = {};
   starterItems.forEach(item => { equipped[item.slot] = item; });
 
-  // Create base state
+  // Create base state with defensive defaults
   const state = {
     classData,
     playerName,
@@ -48,16 +48,21 @@ const initialGameState = (classId, playerName) => {
     maxMp: base.mp,
     inventory: [...starterItems],
     equipped,
+    potionCooldowns: { hp: 0, mp: 0 },
     skillPoints: 1,
     skillLevels: { Q: 0, W: 0, E: 0, R: 0 },
     cooldowns: { Q: 0, W: 0, E: 0, R: 0 },
     currentZone: null,
     nearNPC: null,
     nearChest: null,
+    nearNode: null,
     dialogueNPC: null,
     dialogueIndex: 0,
     lootFound: null,
     kills: 0,
+    gold: 0,
+    _activeBuffs: [], // For UI tracking
+    equipStats: { attack: 0, defense: 0 }, // For equipment calculation
   };
 
   // Calculate final stats from gear

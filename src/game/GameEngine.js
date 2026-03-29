@@ -16,7 +16,7 @@ import { SkillExecutor } from './SkillExecutor.js';
 import { combatFX } from './CombatFX.js';
 import { buffSystem } from './BuffSystem.js';
 import questManager from './QuestManager.js';
-import { getNPCById, NPCS } from './NPCDefinitions.js';
+import { getNPCById } from './NPCRegistry.js';
 
 export class GameEngine {
   constructor(canvas, gameState, onStateUpdate) {

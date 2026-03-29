@@ -276,19 +276,21 @@ export function getSkillByKey(classId, key) {
  * damageScaling: { attack: 1.2, defense: 0.5, level: 0.3, ... }
  */
 export function calculateSkillDamage(skill, playerStats) {
-  if (!skill.damageScaling) return 0;
+  if (!skill || !skill.damageScaling) return 10; // Safe default minimum
 
-  let damage = 0;
+  let damage = 10; // Base minimum damage
   const scaling = skill.damageScaling;
+  const stats = playerStats || {};
 
   if (scaling.attack) {
-    damage += (playerStats.attackPower || 0) * scaling.attack;
+    // Use 'attack' field which is what base stats use
+    damage += (stats.attack || 22) * scaling.attack;
   }
   if (scaling.defense) {
-    damage += (playerStats.defense || 0) * scaling.defense;
+    damage += (stats.defense || 0) * scaling.defense;
   }
   if (scaling.level) {
-    damage += (playerStats.level || 1) * scaling.level;
+    damage += (stats.level || 1) * scaling.level;
   }
   if (scaling.flat) {
     damage += scaling.flat;
@@ -310,9 +312,9 @@ export function isSkillUnlocked(skill, playerLevel) {
  * Validate if skill can be cast
  */
 export function canCastSkill(skill, playerState) {
-  if (!skill) return false;
-  if (playerState.mp < skill.manaCost) return false;
-  if (playerState.level < 6 && skill.key === 'R') return false; // R locked until level 6
+  if (!skill || !playerState) return false;
+  if (!playerState.mp || playerState.mp < skill.manaCost) return false;
+  if ((playerState.level || 1) < 6 && skill.key === 'R') return false; // R locked until level 6
   return true;
 }
 

@@ -16,11 +16,14 @@ export class SkillExecutor {
   }
 
   /**
-   * Execute a skill at a target location
-   * Returns array of { enemy, x, y, dmg, killed }
-   */
+    * Execute a skill at a target location
+    * Returns array of { enemy, x, y, dmg, killed }
+    */
   execute(skill, playerX, playerY, targetX, targetY, playerStats, classId) {
-    if (!skill) return [];
+    if (!skill || !this.engine || !this.engine.enemyManager) {
+      console.warn('[SkillExecutor] Invalid skill or engine state');
+      return [];
+    }
 
     const hits = [];
 
@@ -41,6 +44,7 @@ export class SkillExecutor {
         return this._executeDash(skill, playerX, playerY, targetX, targetY, playerStats);
 
       default:
+        console.warn(`[SkillExecutor] Unknown cast type: ${skill.castType}`);
         return [];
     }
   }
