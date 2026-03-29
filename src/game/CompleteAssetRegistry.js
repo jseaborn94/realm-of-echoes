@@ -165,6 +165,17 @@ export const EFFECT_SPRITES = {
   dust2: `${GITHUB_RAW_BASE}/Particle FX/Dust_02.png`,
 };
 
+// Projectile sprites (mapped to effects, with fallback behavior)
+export const PROJECTILE_SPRITES = {
+  arrow: `${GITHUB_RAW_BASE}/Effects/Projectiles/Arrow.png`, // fallback to dust
+  magic: `${GITHUB_RAW_BASE}/Effects/Fire/Fire.png`, // arcane/magic projectile
+  flame: `${GITHUB_RAW_BASE}/Effects/Fire/Fire.png`, // fire-based projectile
+  ice: `${GITHUB_RAW_BASE}/Effects/Ice/Ice.png`, // frost projectile
+  spark: `${GITHUB_RAW_BASE}/Particle FX/Dust_01.png`, // electric/sparks
+  dark: `${GITHUB_RAW_BASE}/Effects/Dark/Dark.png`, // shadow/dark projectile
+  default: `${GITHUB_RAW_BASE}/Particle FX/Dust_01.png`, // fallback to dust particle
+};
+
 // UI elements
 export const UI_SPRITES = {
   buttons: {
@@ -234,15 +245,50 @@ export function getTerrainSprite(category, type) {
   return TERRAIN_SPRITES[category]?.[type] || null;
 }
 
+/**
+ * Map enemy type to projectile type
+ * Determines visual style based on enemy class
+ * @param {string} enemyType - Enemy type
+ * @returns {string} Projectile type (arrow, magic, flame, ice, spark, dark, default)
+ */
+export function getEnemyProjectileType(enemyType) {
+  const projectileMap = {
+    // Ranged attackers
+    harpoonfish: 'spark',      // water projectile
+    shaman: 'magic',           // arcane magic
+    gnoll: 'spark',            // thrown projectile
+    
+    // Miniboss ranged
+    frost_witch: 'ice',        // frost-based spells
+    
+    // Fallback to magic for unknown ranged
+    default: 'magic',
+  };
+  
+  return projectileMap[enemyType] || projectileMap.default;
+}
+
+/**
+ * Get projectile sprite URL by type
+ * @param {string} type - Projectile type (arrow, magic, flame, ice, spark, dark, default)
+ * @returns {string|null} Sprite URL or null
+ */
+export function getProjectileSprite(type) {
+  return PROJECTILE_SPRITES[type] || PROJECTILE_SPRITES.default;
+}
+
 export default {
   ENEMY_SPRITES,
   PLAYER_SPRITES,
   TERRAIN_SPRITES,
   EFFECT_SPRITES,
+  PROJECTILE_SPRITES,
   UI_SPRITES,
   BUILDING_SPRITES,
   getEnemySprite,
   getRandomEnemyType,
   getPlayerSprite,
   getTerrainSprite,
+  getEnemyProjectileType,
+  getProjectileSprite,
 };

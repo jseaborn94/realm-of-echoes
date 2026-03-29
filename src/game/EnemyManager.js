@@ -1,6 +1,7 @@
 import { TILE_SIZE, WORLD_COLS, WORLD_ROWS, getZoneAt } from './constants.js';
 import { TILE } from './WorldGenerator.js';
 import { assetIntegration } from './AssetIntegration.js';
+import { getEnemyProjectileType } from './CompleteAssetRegistry.js';
 
 // ─── Enemy Definitions ───────────────────────────────────────────────────────
 export const ENEMY_TYPES = {
@@ -532,11 +533,14 @@ export class EnemyManager {
             const angle  = Math.atan2(dy, dx);
             const jitter = (Math.random() - 0.5) * (isMiniboss ? 0.12 : 0.25);
             const dmg    = Math.max(1, e.atk - Math.floor((gameState.equipStats?.defense || 0) * 0.4));
+            const projType = getEnemyProjectileType(e.type);
             e.projectiles.push({
               x: e.x, y: e.y,
               vx: Math.cos(angle + jitter) * speed,
               vy: Math.sin(angle + jitter) * speed,
               dmg, life: 2.8, color: e.projectileColor,
+              type: projType,
+              angle: angle + jitter,
             });
             // Ranged attack cooldown: elites fire faster than normals
             e.attackCooldown = isMiniboss ? 1.6 : isElite ? 1.4 : 2.0;
@@ -685,16 +689,19 @@ export class EnemyManager {
       if (!e.projectiles) continue;
       for (const p of e.projectiles) {
         const sx = p.x - camX, sy = p.y - camY;
-        // Draw projectile using fire effect sprite (direction-rotated)
-        const angle = Math.atan2(p.vy || 0, p.vx || 1);
-        assetIntegration.drawProjectile(ctx, sx, sy, angle, 'fire').catch(() => {
-          // Fallback: simple glow circle
+        // Draw projectile with type-specific sprite and rotation
+        const angle = p.angle || Math.atan2(p.vy || 0, p.vx || 1);
+        const projType = p.type || 'magic';
+        assetIntegration.drawProjectile(ctx, sx, sy, angle, projType).catch(() => {
+          // Fallback: colored glow circle matching projectile type
           ctx.save();
-          ctx.fillStyle = p.color || '#ff0';
-          ctx.shadowColor = p.color || '#ff0';
-          ctx.shadowBlur = 8;
+          const colorMap = { arrow: '#d4a574', magic: '#9c27b0', flame: '#ff6b00', ice: '#4fc3f7', spark: '#ffeb3b', dark: '#424242', default: '#888' };
+          const glowColor = colorMap[projType] || colorMap.magic;
+          ctx.fillStyle = glowColor;
+          ctx.shadowColor = glowColor;
+          ctx.shadowBlur = 10;
           ctx.beginPath();
-          ctx.arc(sx, sy, 4, 0, Math.PI * 2);
+          ctx.arc(sx, sy, 5, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
         });

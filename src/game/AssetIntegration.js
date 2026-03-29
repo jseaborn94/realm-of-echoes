@@ -189,16 +189,17 @@ export class AssetIntegration {
   }
 
   /**
-   * Draw a projectile sprite
+   * Draw a projectile sprite with direction-based rotation
    * @param {CanvasRenderingContext2D} ctx
    * @param {number} screenX - Center X
    * @param {number} screenY - Center Y
    * @param {number} angle - Direction in radians
-   * @param {string} projectileType - Type (arrow, magic, etc.) defaults to fire
+   * @param {string} projectileType - Type (arrow, magic, flame, ice, spark, dark, default)
    */
-  async drawProjectile(ctx, screenX, screenY, angle = 0, projectileType = 'fire') {
-    // Use fire effect as projectile visual (can be extended with dedicated projectile assets)
-    const spriteUrl = EFFECT_SPRITES[projectileType] || EFFECT_SPRITES.fire;
+  async drawProjectile(ctx, screenX, screenY, angle = 0, projectileType = 'magic') {
+    // Import getProjectileSprite from registry
+    const { getProjectileSprite } = await import('./CompleteAssetRegistry.js');
+    const spriteUrl = getProjectileSprite(projectileType);
     if (!spriteUrl) return;
 
     try {
@@ -208,12 +209,17 @@ export class AssetIntegration {
       ctx.save();
       ctx.translate(screenX, screenY);
       ctx.rotate(angle);
-      const w = img.width * 0.8;
-      const h = img.height * 0.8;
+      
+      // Scale based on projectile type
+      const scaleMap = { arrow: 0.6, magic: 0.7, flame: 0.8, ice: 0.7, spark: 0.6, dark: 0.75, default: 0.5 };
+      const scale = scaleMap[projectileType] || 0.6;
+      
+      const w = img.width * scale;
+      const h = img.height * scale;
       ctx.drawImage(img, -w / 2, -h / 2, w, h);
       ctx.restore();
     } catch (err) {
-      // Silent fail
+      // Silent fail, fallback to geometric rendering in enemy draw
     }
   }
 
