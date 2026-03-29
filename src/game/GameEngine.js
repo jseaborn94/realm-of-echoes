@@ -40,7 +40,6 @@ export class GameEngine {
     // Auto-attack target
     this.autoAttackTarget = null;
     this.autoAttackCooldown = 0;
-    this.AUTO_ATTACK_RANGE = 50;   // world px — melee reach
     this.AUTO_ATTACK_SPEED = 1.0;  // seconds between auto attacks
 
     // Visual effects
@@ -464,6 +463,18 @@ export class GameEngine {
     return null;
   }
 
+  // Returns the auto-attack range in world-px based on class
+  _getAutoAttackRange() {
+    const classId = this.gameState.classData?.id || 'warrior';
+    switch (classId) {
+      case 'archer': return 220;  // ranged — stay well back
+      case 'monk':   return 130;  // mid-range staff
+      case 'lancer': return 55;   // slightly longer melee reach
+      case 'warrior':
+      default:       return 44;   // standard melee
+    }
+  }
+
   // Process auto-attack tick
   _updateAutoAttack(dt) {
     if (!this.autoAttackTarget) return;
@@ -477,9 +488,12 @@ export class GameEngine {
 
     const dx = e.x - this.px, dy = e.y - this.py;
     const dist = Math.sqrt(dx * dx + dy * dy);
+    const attackRange = this._getAutoAttackRange();
+    // Small buffer so ranged classes don't jitter at the exact edge
+    const stopRange = attackRange * 0.92;
 
-    if (dist > this.AUTO_ATTACK_RANGE) {
-      // Move toward target
+    if (dist > attackRange) {
+      // Move toward target — stop once inside valid attack range
       const spd = PLAYER_SPEED * (this.gameState.classData?.baseStats?.speed || 1.0) * dt;
       const nx = this.px + (dx / dist) * spd;
       const ny = this.py + (dy / dist) * spd;
@@ -488,9 +502,10 @@ export class GameEngine {
       else if (!this._isBlocked(nx, this.py)) { this.px = nx; }
       else if (!this._isBlocked(this.px, ny)) { this.py = ny; }
     } else {
-      // In range — attack!
+      // In range — stop movement and attack
       this.facingAngle = Math.atan2(dy, dx);
-      this.destination = null; // stay put while attacking
+      this.destination = null;
+
       if (this.autoAttackCooldown <= 0) {
         const gs = this.gameState;
         const totalAtk = (gs.classData?.baseStats?.attack || 22) + (gs.equipStats?.attack || 0);
