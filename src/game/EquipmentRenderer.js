@@ -60,9 +60,9 @@ export class EquipmentRenderer {
 
     // Map layers to slots — weapon layer draws shield then weapon to prevent clipping
     const layerSlots = {
-      back: ['cape'],       // Future: back accessories
-      chest: ['chest'],     // Chest armor
-      helmet: ['helmet'],   // Head gear
+      back: ['cape'],                                      // Back accessories
+      chest: ['chest', 'boots'],                           // Chest + feet armor
+      helmet: ['helmet'],                                  // Head gear
       weapon: flipX > 0 ? ['shield', 'weapon'] : ['weapon', 'shield'], // Reverse order when facing left for correct depth
     };
 

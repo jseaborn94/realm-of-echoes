@@ -38,6 +38,16 @@ const GEAR_ANCHOR_POINTS = {
       move:   { offsetX: -4, offsetY: 4, scale: 0.50, flipWithChar: true },
       attack: { offsetX: -3, offsetY: 1, scale: 0.50, flipWithChar: true },
     },
+    cape: {
+      idle:   { offsetX: -2, offsetY: 12, scale: 0.65, flipWithChar: true },   // Back accessory
+      move:   { offsetX: -2, offsetY: 12, scale: 0.65, flipWithChar: true },
+      attack: { offsetX: 0, offsetY: 10, scale: 0.65, flipWithChar: true },
+    },
+    boots: {
+      idle:   { offsetX: 0, offsetY: 18, scale: 0.55 },   // Subtle feet armor
+      move:   { offsetX: 0, offsetY: 18, scale: 0.55 },
+      attack: { offsetX: 0, offsetY: 18, scale: 0.55 },
+    },
   },
 
   warrior: {
@@ -60,6 +70,16 @@ const GEAR_ANCHOR_POINTS = {
       idle:   { offsetX: -8, offsetY: 0, scale: 0.85, flipWithChar: true },    // Large shield
       move:   { offsetX: -7, offsetY: 2, scale: 0.85, flipWithChar: true },
       attack: { offsetX: -6, offsetY: -3, scale: 0.85, flipWithChar: true },
+    },
+    cape: {
+      idle:   { offsetX: -3, offsetY: 10, scale: 0.75, flipWithChar: true },   // Heavier back armor
+      move:   { offsetX: -3, offsetY: 10, scale: 0.75, flipWithChar: true },
+      attack: { offsetX: -1, offsetY: 8, scale: 0.75, flipWithChar: true },
+    },
+    boots: {
+      idle:   { offsetX: 0, offsetY: 18, scale: 0.65 },   // Solid boot presence
+      move:   { offsetX: 0, offsetY: 18, scale: 0.65 },
+      attack: { offsetX: 0, offsetY: 18, scale: 0.65 },
     },
   },
 
@@ -84,6 +104,16 @@ const GEAR_ANCHOR_POINTS = {
       move:   { offsetX: -5, offsetY: 3, scale: 0.65, flipWithChar: true },
       attack: { offsetX: -4, offsetY: 0, scale: 0.65, flipWithChar: true },
     },
+    cape: {
+      idle:   { offsetX: -2, offsetY: 12, scale: 0.70, flipWithChar: true },   // Flowing cape
+      move:   { offsetX: -2, offsetY: 12, scale: 0.70, flipWithChar: true },
+      attack: { offsetX: 0, offsetY: 10, scale: 0.70, flipWithChar: true },
+    },
+    boots: {
+      idle:   { offsetX: 0, offsetY: 18, scale: 0.60 },   // Medium boot presence
+      move:   { offsetX: 0, offsetY: 18, scale: 0.60 },
+      attack: { offsetX: 0, offsetY: 18, scale: 0.60 },
+    },
   },
 
   monk: {
@@ -106,6 +136,16 @@ const GEAR_ANCHOR_POINTS = {
       idle:   { offsetX: -4, offsetY: 3, scale: 0.45, flipWithChar: true },    // Minimal shield
       move:   { offsetX: -3, offsetY: 4, scale: 0.45, flipWithChar: true },
       attack: { offsetX: -2, offsetY: 1, scale: 0.45, flipWithChar: true },
+    },
+    cape: {
+      idle:   { offsetX: -1, offsetY: 13, scale: 0.60, flipWithChar: true },   // Light ceremonial cape
+      move:   { offsetX: -1, offsetY: 13, scale: 0.60, flipWithChar: true },
+      attack: { offsetX: 1, offsetY: 11, scale: 0.60, flipWithChar: true },
+    },
+    boots: {
+      idle:   { offsetX: 0, offsetY: 18, scale: 0.50 },   // Minimal foot gear
+      move:   { offsetX: 0, offsetY: 18, scale: 0.50 },
+      attack: { offsetX: 0, offsetY: 18, scale: 0.50 },
     },
   },
 };
@@ -284,6 +324,12 @@ export function mapGearVisual(slot, item, classId = 'warrior', animState = 'idle
   } else if (slot === 'shield' || slot === 'offhand') {
     const rarity = getItemRarity(item);
     spriteUrl = getShieldSprite(rarity);
+  } else if (slot === 'boots' || slot === 'pants' || slot === 'greaves') {
+    const rarity = getItemRarity(item);
+    spriteUrl = getChestSprite(rarity); // Reuse armor sprite for boots
+  } else if (slot === 'cape' || slot === 'back' || slot === 'cloak') {
+    const rarity = getItemRarity(item);
+    spriteUrl = getChestSprite(rarity); // Reuse armor sprite for cape
   }
 
   // Final fallback: generic rock if absolutely nothing else exists
@@ -319,13 +365,13 @@ export function normalizeItemForGear(item) {
 
 /**
  * Get all visual mappings for equipped items
- * Returns { weapon: {...}, helmet: {...}, chest: {...}, ... }
+ * Returns { weapon: {...}, helmet: {...}, chest: {...}, boots: {...}, cape: {...}, ... }
  */
 export function getEquippedVisuals(equipped, classId = 'warrior', animState = 'idle') {
   if (!equipped) return {};
 
   const visuals = {};
-  const slots = ['weapon', 'helmet', 'chest', 'shield'];
+  const slots = ['weapon', 'helmet', 'chest', 'shield', 'cape', 'boots'];
 
   for (const slot of slots) {
     const item = equipped[slot];
