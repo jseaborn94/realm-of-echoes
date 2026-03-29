@@ -6,7 +6,7 @@ import {
 import { WorldGenerator, TILE_COLORS, TILE, OBJ } from './WorldGenerator.js';
 import { EnemyManager } from './EnemyManager.js';
 import { GatheringSystem, addResourcesToInventory } from './GatheringSystem.js';
-import { TargetingSystem } from './TargetingSystem.js';
+import { TargetingSystem } from './TargetingSystem.js'; // v2
 
 export class GameEngine {
   constructor(canvas, gameState, onStateUpdate) {
