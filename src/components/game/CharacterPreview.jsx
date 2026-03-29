@@ -42,16 +42,19 @@ export default function CharacterPreview({ gameState, equipped, size = 200, anim
         // 2. Base character sprite
         await assetIntegration.drawPlayerSprite(ctx, classId, cx, cy, color, animState);
 
-        // 3. Equipment layers (facing right)
+        // 3. Equipment layers (facing right) — render in order: back, chest, helmet, weapon
         const facingAngle = 0; // Always face right in preview
 
-        // Chest armor
+        // Back accessories (cape, etc.)
+        await equipmentRenderer.drawEquipmentLayer(ctx, cx, cy, equipped, classId, animState, 'back', facingAngle);
+
+        // Chest armor + boots
         await equipmentRenderer.drawEquipmentLayer(ctx, cx, cy, equipped, classId, animState, 'chest', facingAngle);
 
         // Helmet
         await equipmentRenderer.drawEquipmentLayer(ctx, cx, cy, equipped, classId, animState, 'helmet', facingAngle);
 
-        // Weapon
+        // Weapon + shield (draw order handles facing)
         await equipmentRenderer.drawEquipmentLayer(ctx, cx, cy, equipped, classId, animState, 'weapon', facingAngle);
       } catch (err) {
         // Silent fail - preview will show base character
