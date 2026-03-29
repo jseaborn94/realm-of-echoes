@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { UI_SPRITES } from '../../game/CompleteAssetRegistry.js';
+import React, { useState } from 'react';
 
 /**
  * UISpriteButton
  * 
- * Button with sprite background for pressed/unpressed states.
- * Falls back to CSS if sprites unavailable.
+ * Simple button with pressed state styling.
+ * Uses CSS-only styling (no sprite canvas).
  */
 export default function UISpriteButton({ 
   children, 
@@ -17,55 +16,29 @@ export default function UISpriteButton({
   title = '',
 }) {
   const [isPressed, setIsPressed] = useState(false);
-  const canvasRef = useRef(null);
-  const [spriteUrl, setSpriteUrl] = useState(null);
 
-  // Get sprite URL based on variant and pressed state
-  useEffect(() => {
-    const spriteKey = isPressed ? `${variant}Pressed` : variant;
-    const url = UI_SPRITES.buttons?.[spriteKey];
-    setSpriteUrl(url);
-  }, [variant, isPressed]);
-
-  // Draw sprite on canvas
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !spriteUrl) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
-    };
-    img.src = spriteUrl;
-  }, [spriteUrl]);
+  const bgColor = variant === 'blue' ? '#4a90d9' : '#e63946';
+  const pressBgColor = variant === 'blue' ? '#357abf' : '#c8304a';
 
   return (
     <button
-      ref={canvasRef}
       onClick={onClick}
       onMouseDown={() => setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
       onMouseLeave={() => setIsPressed(false)}
       disabled={disabled}
       title={title}
-      className={`relative inline-flex items-center justify-center font-cinzel font-bold text-sm transition-opacity ${className}`}
+      className={`relative inline-flex items-center justify-center font-cinzel font-bold text-sm transition-all ${className}`}
       style={{
         ...style,
+        background: isPressed ? pressBgColor : bgColor,
+        border: '1px solid rgba(255,255,255,0.2)',
+        color: '#ffe88a',
+        padding: '8px 16px',
+        borderRadius: '4px',
         opacity: disabled ? 0.5 : 1,
         cursor: disabled ? 'not-allowed' : 'pointer',
-        imageRendering: 'pixelated',
-        // Fallback styling if sprite fails
-        background: !spriteUrl ? (variant === 'blue' ? '#4a90d9' : '#e63946') : 'transparent',
-        border: !spriteUrl ? '1px solid rgba(255,255,255,0.2)' : 'none',
-        color: '#ffe88a',
-        padding: !spriteUrl ? '8px 16px' : undefined,
-        borderRadius: !spriteUrl ? '4px' : undefined,
+        transform: isPressed ? 'scale(0.98)' : 'scale(1)',
       }}
     >
       {children}
