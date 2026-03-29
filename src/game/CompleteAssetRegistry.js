@@ -176,6 +176,29 @@ export const PROJECTILE_SPRITES = {
   default: `${GITHUB_RAW_BASE}/Particle FX/Dust_01.png`, // fallback to dust particle
 };
 
+// Equipment sprites — layered on top of base character
+export const EQUIPMENT_SPRITES = {
+  helmets: {
+    common: `${GITHUB_RAW_BASE}/UI Elements/UI Elements/Human Avatars/Avatars_01.png`,
+    rare: `${GITHUB_RAW_BASE}/UI Elements/UI Elements/Human Avatars/Avatars_02.png`,
+    epic: `${GITHUB_RAW_BASE}/UI Elements/UI Elements/Human Avatars/Avatars_03.png`,
+  },
+  chest: {
+    common: `${GITHUB_RAW_BASE}/Terrain/Decorations/Rocks/Rock1.png`,
+    rare: `${GITHUB_RAW_BASE}/Terrain/Decorations/Rocks/Rock2.png`,
+    epic: `${GITHUB_RAW_BASE}/Terrain/Decorations/Rocks/Rock3.png`,
+  },
+  weapons: {
+    sword: `${GITHUB_RAW_BASE}/Terrain/Resources/Wood/Wood Resource/Wood Resource.png`,
+    bow: `${GITHUB_RAW_BASE}/Terrain/Resources/Wood/Trees/Tree1.png`,
+    staff: `${GITHUB_RAW_BASE}/Terrain/Resources/Gold/Gold Resource/Gold_Resource.png`,
+    spear: `${GITHUB_RAW_BASE}/Terrain/Resources/Wood/Trees/Tree2.png`,
+  },
+  offhand: {
+    shield: `${GITHUB_RAW_BASE}/Terrain/Decorations/Rocks/Rock4.png`,
+  },
+};
+
 // UI elements
 export const UI_SPRITES = {
   buttons: {

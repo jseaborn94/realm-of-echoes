@@ -8,6 +8,7 @@ import { EnemyManager } from './EnemyManager.js';
 import { GatheringSystem, addResourcesToInventory } from './GatheringSystem.js';
 import { TargetingSystem } from './TargetingSystem.js'; // v2
 import { assetIntegration } from './AssetIntegration.js';
+import { equipmentRenderer } from './EquipmentRenderer.js';
 import { skillFX } from './SkillFX.js';
 
 export class GameEngine {
@@ -1039,6 +1040,13 @@ export class GameEngine {
       // Fallback: draw simple placeholder
       ctx.fillStyle = gs.classData?.color || '#888';
       ctx.fillRect(px - 10, py - 20, 20, 28);
+    }
+
+    // Draw equipped gear layers on top of base character
+    try {
+      await equipmentRenderer.drawEquipment(ctx, px, py, gs.equipped, action, 1);
+    } catch (err) {
+      // Silent fail — equipment rendering is optional
     }
 
     // Nameplate
