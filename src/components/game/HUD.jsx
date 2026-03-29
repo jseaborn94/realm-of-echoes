@@ -2,7 +2,6 @@ import React from 'react';
 import { getLevelTierColor, xpForLevel } from '../../game/constants.js';
 import MiniMap from './MiniMap.jsx';
 import UIBarRenderer from './UIBarRenderer.jsx';
-import UISpriteButton from './UISpriteButton.jsx';
 
 function StatBar({ value, max, className, style, barType = 'small' }) {
   const pct = Math.max(0, Math.min(1, value / max));
@@ -267,20 +266,18 @@ export default function HUD({ gameState, onOpenInventory, onOpenSkills }) {
 
       {/* Bottom right: Panel buttons */}
       <div className="fixed bottom-5 right-3 z-40 flex flex-col gap-2">
-        <UISpriteButton 
-          onClick={onOpenInventory}
-          variant="blue"
-          className="px-3 py-2"
-          style={{ color: '#ffe88a', minWidth: '100px' }}>
-          🎒 Inventory
-        </UISpriteButton>
-        <UISpriteButton 
-          onClick={onOpenSkills}
-          variant="blue"
-          className="px-3 py-2"
-          style={{ color: '#ffe88a', minWidth: '100px' }}>
-          ✨ Skills
-        </UISpriteButton>
+      <button 
+        onClick={onOpenInventory}
+        className="px-3 py-2 rounded bg-blue-600 hover:bg-blue-700 text-yellow-100 font-cinzel font-bold text-sm transition-colors"
+        style={{ minWidth: '100px' }}>
+        🎒 Inventory
+      </button>
+      <button 
+        onClick={onOpenSkills}
+        className="px-3 py-2 rounded bg-blue-600 hover:bg-blue-700 text-yellow-100 font-cinzel font-bold text-sm transition-colors"
+        style={{ minWidth: '100px' }}>
+        ✨ Skills
+      </button>
       </div>
 
       {/* Mini-map — organic zones canvas */}
