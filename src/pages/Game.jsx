@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { CLASSES, STARTER_ITEMS, xpForLevel } from '@/game/constants.js';
 import { saveCharacter, loadCharacter } from '@/game/CharacterManager.js';
+import { calculatePlayerStats } from '@/game/StatsCalculator.js';
 import { base44 } from '@/api/base44Client';
 import { GameEngine } from '@/game/GameEngine.js';
 import ClassSelect from '@/components/game/ClassSelect.jsx';
@@ -22,7 +23,8 @@ const initialGameState = (classId, playerName) => {
   const equipped = {};
   starterItems.forEach(item => { equipped[item.slot] = item; });
 
-  return {
+  // Create base state
+  const state = {
     classData,
     playerName,
     level: 1,
@@ -33,10 +35,6 @@ const initialGameState = (classId, playerName) => {
     maxMp: base.mp,
     inventory: [...starterItems],
     equipped,
-    equipStats: starterItems.reduce((acc, i) => {
-      Object.entries(i.stats || {}).forEach(([k, v]) => { acc[k] = (acc[k] || 0) + v; });
-      return acc;
-    }, {}),
     skillPoints: 1,
     skillLevels: { Q: 0, W: 0, E: 0, R: 0 },
     cooldowns: { Q: 0, W: 0, E: 0, R: 0 },
@@ -48,6 +46,11 @@ const initialGameState = (classId, playerName) => {
     lootFound: null,
     kills: 0,
   };
+
+  // Calculate final stats from gear
+  state.stats = calculatePlayerStats(state);
+  
+  return state;
 };
 
 export default function Game() {
@@ -240,31 +243,17 @@ export default function Game() {
       
       const newEquipped = { ...prev.equipped };
       const oldItem = newEquipped[slot];
-      
-      // Determine destination slot for swapped item
-      let swapSourceSlot = slot;
-      if (oldItem) {
-        // For ring swaps, find the source slot of the new item
-        const newItemSlot = item.equipmentSlot || item.slot;
-        if (newItemSlot === 'ring' && (slot === 'ring1' || slot === 'ring2')) {
-          // Ring is being equipped into one slot; we'll place old item back
-          swapSourceSlot = slot;
-        }
-      }
 
       // Check inventory space for old item
       if (oldItem) {
-        // Count non-resource items in inventory
         const gearCount = prev.inventory.filter(i => !i.isResource).length;
-        const maxGearSlots = 20; // reasonable backpack limit
+        const maxGearSlots = 20;
         
         if (gearCount >= maxGearSlots) {
-          // Inventory full — show feedback and abort swap
-          const msg = `Inventory full! Drop an item first.`;
           engineRef.current?.damageNumbers?.push?.({
             x: engineRef.current?.px || 0,
             y: (engineRef.current?.py || 0) - 30,
-            text: msg,
+            text: `Inventory full! Drop an item first.`,
             color: '#ff6644',
             life: 2.0,
           });
@@ -272,42 +261,33 @@ export default function Game() {
         }
       }
 
-      // Remove new item from inventory (it's being equipped)
+      // Remove new item from inventory, add old item back
       const newInventory = prev.inventory.filter(i => i.id !== item.id);
-
-      // Add old item back to inventory if one exists
-      if (oldItem) {
-        newInventory.push(oldItem);
-      }
+      if (oldItem) newInventory.push(oldItem);
 
       // Equip the new item
       newEquipped[slot] = item;
 
-      // Recalc equipStats
-      const equipStats = Object.values(newEquipped).reduce((acc, i) => {
-        if (!i) return acc;
-        Object.entries(i.stats || {}).forEach(([k, v]) => { acc[k] = (acc[k] || 0) + v; });
-        return acc;
-      }, {});
+      // Recalculate stats from base + new equipped items
+      const newState = { ...prev, equipped: newEquipped, inventory: newInventory };
+      newState.stats = calculatePlayerStats(newState);
 
-      return { ...prev, equipped: newEquipped, inventory: newInventory, equipStats };
+      return newState;
     });
   }
 
   function handleUnequip(item, slot) {
     setGameState(prev => {
       if (!prev) return prev;
+      
       const newEquipped = { ...prev.equipped };
       delete newEquipped[slot];
       const newInventory = prev.inventory.find(i => i.id === item.id) ? prev.inventory : [...prev.inventory, item];
 
-      const equipStats = Object.values(newEquipped).reduce((acc, i) => {
-        if (!i) return acc;
-        Object.entries(i.stats || {}).forEach(([k, v]) => { acc[k] = (acc[k] || 0) + v; });
-        return acc;
-      }, {});
+      const newState = { ...prev, equipped: newEquipped, inventory: newInventory };
+      newState.stats = calculatePlayerStats(newState);
 
-      return { ...prev, equipped: newEquipped, inventory: newInventory, equipStats };
+      return newState;
     });
   }
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { RARITY_COLORS } from '../../game/constants.js';
 import { motion } from 'framer-motion';
 import { canEquipIntoSlot, normalizeItem } from '../../game/ItemSystem.js';
+import { calculatePlayerStats, getEquipmentBonuses, STAT_DISPLAY_INFO, formatStatValue } from '../../game/StatsCalculator.js';
 
 const SLOT_ICONS = {
   weapon: '⚔️', offhand: '🛡️', helmet: '⛑️', chest: '🧥',
@@ -126,20 +127,17 @@ export default function EquipmentPanel({ gameState, equipped, onEquip, onUnequip
   const classId = gameState.classData?.id || 'warrior';
   const classColor = gameState.classData?.color || '#888';
 
-  // Calculate total stats
-  const baseStats = gameState.classData?.baseStats || {};
-  const equipStats = Object.values(equipped).reduce((acc, item) => {
-    if (!item) return acc;
-    Object.entries(item.stats || {}).forEach(([k, v]) => { acc[k] = (acc[k] || 0) + v; });
-    return acc;
-  }, {});
+  // Get calculated stats from gameState
+  const stats = gameState.stats || calculatePlayerStats(gameState);
+  const bonuses = getEquipmentBonuses(equipped);
 
-  const totalStats = {
-    attack: (baseStats.attack || 0) + (equipStats.attack || 0),
-    defense: (baseStats.defense || 0) + (equipStats.defense || 0),
-    hp: (baseStats.hp || 0) + (gameState.level || 1) * 15,
-    mp: (baseStats.mp || 0) + (gameState.level || 1) * 8,
-  };
+  // Primary display stats
+  const displayStats = [
+    { key: 'attackPower', label: 'ATK', color: '#e63946' },
+    { key: 'defense', label: 'DEF', color: '#4a9eff' },
+    { key: 'maxHealth', label: 'HP', color: '#4caf50' },
+    { key: 'maxMana', label: 'MP', color: '#9c27b0' },
+  ];
 
   const primarySlots = ['weapon', 'helmet', 'chest', 'gloves', 'boots'];
   const secondarySlots = ['offhand', 'ring1', 'ring2', 'amulet', 'belt', 'cape'].filter(s => equipped[s] || s !== 'offhand');
@@ -158,20 +156,22 @@ export default function EquipmentPanel({ gameState, equipped, onEquip, onUnequip
             <div className="font-cinzel font-bold text-sm" style={{ color: '#ffe88a' }}>{gameState.playerName}</div>
             <div className="font-cinzel text-xs mb-2" style={{ color: '#6a5a3a' }}>Lv. {gameState.level} {gameState.classData?.name}</div>
             <div className="space-y-1">
-              {[
-                { label: 'ATK', val: totalStats.attack, color: '#e63946' },
-                { label: 'DEF', val: totalStats.defense, color: '#4a9eff' },
-              ].map(s => (
-                <div key={s.label} className="flex justify-between gap-4">
-                  <span className="font-cinzel text-xs" style={{ color: '#5a4a2a' }}>{s.label}</span>
-                  <div className="flex items-center gap-1">
-                    {equipStats[s.label?.toLowerCase()] > 0 && (
-                      <span className="text-xs" style={{ color: '#4caf50' }}>+{equipStats[s.label?.toLowerCase()]}</span>
-                    )}
-                    <span className="font-cinzel text-xs font-bold" style={{ color: s.color }}>{s.val}</span>
+              {displayStats.map(s => {
+                const bonus = bonuses[s.key] || 0;
+                return (
+                  <div key={s.key} className="flex justify-between gap-4">
+                    <span className="font-cinzel text-xs" style={{ color: '#5a4a2a' }}>{s.label}</span>
+                    <div className="flex items-center gap-1">
+                      {bonus > 0 && (
+                        <span className="text-xs" style={{ color: '#4caf50' }}>+{bonus}</span>
+                      )}
+                      <span className="font-cinzel text-xs font-bold" style={{ color: s.color }}>
+                        {formatStatValue(s.key, stats[s.key])}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -216,20 +216,32 @@ export default function EquipmentPanel({ gameState, equipped, onEquip, onUnequip
         )}
       </div>
 
-      {/* Full Stats Summary */}
-      <div className="p-3 rounded-lg" style={{ background: 'rgba(0,0,0,0.2)' }}>
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { label: 'HP', val: totalStats.hp, color: '#4caf50' },
-            { label: 'MP', val: totalStats.mp, color: '#9c27b0' },
-          ].map(s => (
-            <div key={s.label} className="flex justify-between gap-2">
-              <span className="font-cinzel text-xs" style={{ color: '#5a4a2a' }}>{s.label}</span>
-              <span className="font-cinzel text-xs font-bold" style={{ color: s.color }}>{s.val}</span>
-            </div>
-          ))}
+      {/* Additional Stats */}
+      {(stats.moveSpeed !== 1.0 || stats.critChance > 0 || stats.critDamage !== 1.0) && (
+        <div className="p-3 rounded-lg" style={{ background: 'rgba(0,0,0,0.2)' }}>
+         <div className="font-cinzel text-xs mb-2" style={{ color: '#6a5a3a' }}>BONUSES</div>
+         <div className="grid grid-cols-2 gap-2 text-xs">
+           {stats.moveSpeed !== 1.0 && (
+             <div className="flex justify-between">
+               <span style={{ color: '#5a4a2a' }}>MSPD</span>
+               <span style={{ color: '#8bc34a' }}>{(stats.moveSpeed * 100).toFixed(0)}%</span>
+             </div>
+           )}
+           {stats.critChance > 0 && (
+             <div className="flex justify-between">
+               <span style={{ color: '#5a4a2a' }}>CRIT%</span>
+               <span style={{ color: '#ff9800' }}>{(stats.critChance * 100).toFixed(1)}%</span>
+             </div>
+           )}
+           {stats.critDamage !== 1.0 && (
+             <div className="flex justify-between">
+               <span style={{ color: '#5a4a2a' }}>CRIT DMG</span>
+               <span style={{ color: '#ff5722' }}>{(stats.critDamage * 100).toFixed(0)}%</span>
+             </div>
+           )}
+         </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
