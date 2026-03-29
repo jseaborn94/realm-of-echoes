@@ -1044,7 +1044,8 @@ export class GameEngine {
 
     // Draw equipped gear layers on top of base character
     try {
-      await equipmentRenderer.drawEquipment(ctx, px, py, gs.equipped, action, 1);
+      const classId = gs.classData?.id || 'warrior';
+      await equipmentRenderer.drawEquipment(ctx, px, py, gs.equipped, classId, action, 1);
     } catch (err) {
       // Silent fail — equipment rendering is optional
     }

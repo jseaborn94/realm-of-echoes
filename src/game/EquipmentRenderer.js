@@ -6,7 +6,7 @@
  */
 
 import { assetIntegration } from './AssetIntegration.js';
-import { EQUIPMENT_SPRITES } from './CompleteAssetRegistry.js';
+import { getEquippedVisuals } from './GearVisualMapping.js';
 
 export class EquipmentRenderer {
   constructor() {
@@ -33,90 +33,41 @@ export class EquipmentRenderer {
   }
 
   /**
-   * Get equipment sprite URL based on item and rarity
-   */
-  getEquipmentSprite(slot, item) {
-    if (!item) return null;
-    
-    const rarity = item.rarity || 'common';
-    const category = this._getEquipmentCategory(slot);
-    
-    if (category === 'weapons') {
-      // Determine weapon type from item name or slot
-      const weaponType = this._getWeaponType(item);
-      return EQUIPMENT_SPRITES.weapons[weaponType];
-    } else if (category === 'helmets') {
-      return EQUIPMENT_SPRITES.helmets[rarity];
-    } else if (category === 'chest') {
-      return EQUIPMENT_SPRITES.chest[rarity];
-    } else if (category === 'offhand') {
-      return EQUIPMENT_SPRITES.offhand[slot];
-    }
-    
-    return null;
-  }
-
-  /**
-   * Map slot name to equipment category
-   */
-  _getEquipmentCategory(slot) {
-    if (slot === 'weapon') return 'weapons';
-    if (slot === 'shield' || slot === 'offhand') return 'offhand';
-    if (slot === 'helmet' || slot === 'head') return 'helmets';
-    if (slot === 'chest' || slot === 'body') return 'chest';
-    return null;
-  }
-
-  /**
-   * Determine weapon type from item data
-   */
-  _getWeaponType(item) {
-    const name = item.name?.toLowerCase() || '';
-    if (name.includes('bow')) return 'bow';
-    if (name.includes('staff') || name.includes('wand')) return 'staff';
-    if (name.includes('spear') || name.includes('lance') || name.includes('pike')) return 'spear';
-    return 'sword'; // default
-  }
-
-  /**
    * Render equipment layers on top of character
    * @param {CanvasRenderingContext2D} ctx
    * @param {number} screenX - Center X
    * @param {number} screenY - Bottom Y (feet)
    * @param {object} equipped - { weapon, helmet, chest, shield, ... }
+   * @param {string} classId - Character class (warrior, archer, lancer, monk)
    * @param {string} action - Animation state (idle, run, attack, death)
    * @param {number} flipX - Direction (1 or -1)
    */
-  async drawEquipment(ctx, screenX, screenY, equipped, action = 'idle', flipX = 1) {
+  async drawEquipment(ctx, screenX, screenY, equipped, classId = 'warrior', action = 'idle', flipX = 1) {
     if (!equipped) return;
 
-    // Equipment render order: helmet → chest → weapon (overlays on top)
-    const renderOrder = [
-      { slot: 'helmet', offsetY: -24, scale: 0.8 },
-      { slot: 'chest', offsetY: -8, scale: 1.0 },
-      { slot: 'weapon', offsetY: -2, scale: 0.9, flipWithChar: true },
-    ];
+    // Get all visual mappings using gear visual system
+    const visuals = getEquippedVisuals(equipped, classId);
 
-    for (const eq of renderOrder) {
-      const item = equipped[eq.slot];
-      if (!item) continue;
+    // Render order: helmet → chest → weapon (overlays on top)
+    const renderOrder = ['helmet', 'chest', 'weapon', 'shield'];
 
-      const spriteUrl = this.getEquipmentSprite(eq.slot, item);
-      if (!spriteUrl) continue;
+    for (const slot of renderOrder) {
+      const visual = visuals[slot];
+      if (!visual) continue;
 
       try {
-        const img = await this.loadEquipmentImage(spriteUrl);
+        const img = await this.loadEquipmentImage(visual.spriteUrl);
         if (!img) continue;
 
         ctx.save();
 
-        // Position relative to character
-        const x = screenX + eq.offsetY * 0.2;
-        const y = screenY + eq.offsetY;
-        const scale = eq.scale;
+        // Position relative to character using class-aware offsets
+        const x = screenX + visual.offsetY * 0.2;
+        const y = screenY + visual.offsetY;
+        const scale = visual.scale;
 
-        // Flip with character if weapon
-        if (eq.flipWithChar && flipX === -1) {
+        // Flip with character if applicable
+        if (visual.flipWithChar && flipX === -1) {
           ctx.translate(x, y);
           ctx.scale(-1, 1);
           ctx.drawImage(img, -img.width * scale / 2, -img.height * scale / 2, img.width * scale, img.height * scale);
