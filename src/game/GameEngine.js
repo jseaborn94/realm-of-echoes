@@ -37,6 +37,12 @@ export class GameEngine {
     this.clickIndicator = null;
     this.facingAngle = 0; // radians, 0 = right
 
+    // Auto-attack target
+    this.autoAttackTarget = null;
+    this.autoAttackCooldown = 0;
+    this.AUTO_ATTACK_RANGE = 50;   // world px — melee reach
+    this.AUTO_ATTACK_SPEED = 1.0;  // seconds between auto attacks
+
     // Visual effects
     this.effects = [];
     this.damageNumbers = [];
@@ -83,11 +89,11 @@ export class GameEngine {
         if (['q','w','e','r'].includes(k)) return;
       }
 
-      // Skill keys — enter aiming mode (or instant-cast for self_aoe)
-      if (k === 'q') this._beginSkill('Q');
-      if (k === 'w') this._beginSkill('W');
-      if (k === 'e') this._beginSkill('E');
-      if (k === 'r') this._beginSkill('R');
+      // Skill keys — enter aiming mode (cancel auto-attack first)
+      if (k === 'q') { this.autoAttackTarget = null; this._beginSkill('Q'); }
+      if (k === 'w') { this.autoAttackTarget = null; this._beginSkill('W'); }
+      if (k === 'e') { this.autoAttackTarget = null; this._beginSkill('E'); }
+      if (k === 'r') { this.autoAttackTarget = null; this._beginSkill('R'); }
       if (k === '1') this._usePotion('hp');
       if (k === '2') this._usePotion('mp');
       if (k === 'f') {
@@ -119,7 +125,18 @@ export class GameEngine {
         return;
       }
 
-      // Normal movement
+      // Check if clicking on an enemy — if so, auto-attack
+      const worldX = (e.clientX + this.camX) / this.zoom;
+      const worldY = (e.clientY + this.camY) / this.zoom;
+      const clickedEnemy = this._getEnemyAt(worldX, worldY);
+      if (clickedEnemy) {
+        this.autoAttackTarget = clickedEnemy;
+        this.destination = null; // cancel move
+        return;
+      }
+
+      // Normal movement — cancel auto-attack
+      this.autoAttackTarget = null;
       this._mouseHeld = true;
       this._setDestFromEvent(e);
     };
@@ -381,6 +398,9 @@ export class GameEngine {
       }
     }
 
+    // ── Auto-attack ──
+    this._updateAutoAttack(dt);
+
     // ── Targeting confirmation ──
     if (this.targeting.confirmed || this.targeting.cancelled) {
       const key = this.targeting.skillKey;
@@ -432,6 +452,64 @@ export class GameEngine {
     }
 
     this.onStateUpdate({ ...gs, cooldowns: { ...this.cooldowns }, potionCooldowns: { ...this.potionCooldowns }, nearNPC: this.nearNPC, nearChest: this.nearChest, nearNode: this.nearNode, playerWorldX: this.px, playerWorldY: this.py });
+  }
+
+  // Find an enemy near a world-space click point
+  _getEnemyAt(wx, wy) {
+    for (const e of this.enemyManager.enemies) {
+      if (e.dead) continue;
+      const ddx = e.x - wx, ddy = e.y - wy;
+      if (Math.sqrt(ddx * ddx + ddy * ddy) < 20) return e;
+    }
+    return null;
+  }
+
+  // Process auto-attack tick
+  _updateAutoAttack(dt) {
+    if (!this.autoAttackTarget) return;
+    const e = this.autoAttackTarget;
+
+    // Clear if dead or removed from enemies list
+    if (e.dead || !this.enemyManager.enemies.includes(e)) {
+      this.autoAttackTarget = null;
+      return;
+    }
+
+    const dx = e.x - this.px, dy = e.y - this.py;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist > this.AUTO_ATTACK_RANGE) {
+      // Move toward target
+      const spd = PLAYER_SPEED * (this.gameState.classData?.baseStats?.speed || 1.0) * dt;
+      const nx = this.px + (dx / dist) * spd;
+      const ny = this.py + (dy / dist) * spd;
+      this.facingAngle = Math.atan2(dy, dx);
+      if (!this._isBlocked(nx, ny)) { this.px = nx; this.py = ny; }
+      else if (!this._isBlocked(nx, this.py)) { this.px = nx; }
+      else if (!this._isBlocked(this.px, ny)) { this.py = ny; }
+    } else {
+      // In range — attack!
+      this.facingAngle = Math.atan2(dy, dx);
+      this.destination = null; // stay put while attacking
+      if (this.autoAttackCooldown <= 0) {
+        const gs = this.gameState;
+        const totalAtk = (gs.classData?.baseStats?.attack || 22) + (gs.equipStats?.attack || 0);
+        const dmg = Math.max(1, Math.floor(totalAtk * (0.25 + Math.random() * 0.1)) - Math.floor(e.def * 0.5));
+        e.hp -= dmg;
+        e.hitFlash = 0.15;
+        this.damageNumbers.push({ x: e.x + (Math.random() - 0.5) * 20, y: e.y - 20, text: `-${dmg}`, color: '#ffffff', life: 1.0 });
+        this.effects.push({ x: e.x, y: e.y, radius: 16, life: 0.25, maxLife: 0.25, color: gs.classData?.color || '#ffffff' });
+        if (e.hp <= 0) {
+          e.dead = true;
+          this.autoAttackTarget = null;
+          this._gainXP(e.xp);
+          this.gameState.kills = (this.gameState.kills || 0) + 1;
+        }
+        this.autoAttackCooldown = this.AUTO_ATTACK_SPEED;
+      }
+    }
+
+    if (this.autoAttackCooldown > 0) this.autoAttackCooldown -= dt;
   }
 
   _isBlocked(wx, wy) {

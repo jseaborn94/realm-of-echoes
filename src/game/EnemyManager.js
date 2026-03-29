@@ -4,19 +4,19 @@ import { TILE } from './WorldGenerator.js';
 // ─── Enemy Definitions ───────────────────────────────────────────────────────
 export const ENEMY_TYPES = {
   // ── MELEE ──
-  skull:       { name: 'Skull',        tier: 'melee',     color: '#c8c8c8', icon: '💀', hp: 60,   atk: 12, def: 2,  speed: 55, xp: 15,  range: 28, lootMult: 1.0 },
-  lancer:      { name: 'Lancer',       tier: 'melee',     color: '#4a90d9', icon: '🗡️', hp: 80,   atk: 18, def: 4,  speed: 60, xp: 22,  range: 30, lootMult: 1.1 },
-  thief:       { name: 'Thief',        tier: 'melee',     color: '#9b59b6', icon: '🔪', hp: 55,   atk: 22, def: 2,  speed: 80, xp: 20,  range: 26, lootMult: 1.1 },
-  snake:       { name: 'Snake',        tier: 'melee',     color: '#27ae60', icon: '🐍', hp: 50,   atk: 15, def: 1,  speed: 70, xp: 14,  range: 24, lootMult: 1.0 },
-  spider:      { name: 'Spider',       tier: 'melee',     color: '#8e44ad', icon: '🕷️', hp: 45,   atk: 14, def: 1,  speed: 75, xp: 13,  range: 24, lootMult: 1.0 },
-  bear:        { name: 'Bear',         tier: 'melee',     color: '#795548', icon: '🐻', hp: 140,  atk: 28, def: 8,  speed: 50, xp: 35,  range: 36, lootMult: 1.3 },
-  gnome:       { name: 'Gnome',        tier: 'melee',     color: '#e74c3c', icon: '🧙', hp: 70,   atk: 20, def: 3,  speed: 58, xp: 18,  range: 28, lootMult: 1.0 },
-  panda:       { name: 'Panda',        tier: 'melee',     color: '#ecf0f1', icon: '🐼', hp: 120,  atk: 25, def: 7,  speed: 45, xp: 30,  range: 34, lootMult: 1.2 },
+  skull:       { name: 'Skull',        tier: 'melee',     color: '#c8c8c8', icon: '💀', hp: 160,  atk: 10, def: 2,  speed: 55, xp: 15,  range: 28, lootMult: 1.0 },
+  lancer:      { name: 'Lancer',       tier: 'melee',     color: '#4a90d9', icon: '🗡️', hp: 200,  atk: 14, def: 4,  speed: 60, xp: 22,  range: 30, lootMult: 1.1 },
+  thief:       { name: 'Thief',        tier: 'melee',     color: '#9b59b6', icon: '🔪', hp: 140,  atk: 16, def: 2,  speed: 80, xp: 20,  range: 26, lootMult: 1.1 },
+  snake:       { name: 'Snake',        tier: 'melee',     color: '#27ae60', icon: '🐍', hp: 130,  atk: 12, def: 1,  speed: 70, xp: 14,  range: 24, lootMult: 1.0 },
+  spider:      { name: 'Spider',       tier: 'melee',     color: '#8e44ad', icon: '🕷️', hp: 120,  atk: 11, def: 1,  speed: 75, xp: 13,  range: 24, lootMult: 1.0 },
+  bear:        { name: 'Bear',         tier: 'melee',     color: '#795548', icon: '🐻', hp: 380,  atk: 22, def: 8,  speed: 50, xp: 35,  range: 36, lootMult: 1.3 },
+  gnome:       { name: 'Gnome',        tier: 'melee',     color: '#e74c3c', icon: '🧙', hp: 180,  atk: 15, def: 3,  speed: 58, xp: 18,  range: 28, lootMult: 1.0 },
+  panda:       { name: 'Panda',        tier: 'melee',     color: '#ecf0f1', icon: '🐼', hp: 320,  atk: 20, def: 7,  speed: 45, xp: 30,  range: 34, lootMult: 1.2 },
 
   // ── RANGED ──
-  harpoonfish: { name: 'Harpoon Fish', tier: 'ranged',    color: '#1abc9c', icon: '🐠', hp: 65,   atk: 20, def: 2,  speed: 48, xp: 24,  range: 160, lootMult: 1.1, projectileColor: '#1abc9c' },
-  shaman:      { name: 'Shaman',       tier: 'ranged',    color: '#e67e22', icon: '🔮', hp: 75,   atk: 24, def: 3,  speed: 42, xp: 28,  range: 180, lootMult: 1.2, projectileColor: '#e67e22' },
-  gnoll:       { name: 'Gnoll',        tier: 'ranged',    color: '#f39c12', icon: '🦴', hp: 80,   atk: 22, def: 4,  speed: 44, xp: 26,  range: 170, lootMult: 1.2, projectileColor: '#f39c12' },
+  harpoonfish: { name: 'Harpoon Fish', tier: 'ranged',    color: '#1abc9c', icon: '🐠', hp: 160,  atk: 16, def: 2,  speed: 48, xp: 24,  range: 160, lootMult: 1.1, projectileColor: '#1abc9c' },
+  shaman:      { name: 'Shaman',       tier: 'ranged',    color: '#e67e22', icon: '🔮', hp: 190,  atk: 18, def: 3,  speed: 42, xp: 28,  range: 180, lootMult: 1.2, projectileColor: '#e67e22' },
+  gnoll:       { name: 'Gnoll',        tier: 'ranged',    color: '#f39c12', icon: '🦴', hp: 200,  atk: 17, def: 4,  speed: 44, xp: 26,  range: 170, lootMult: 1.2, projectileColor: '#f39c12' },
 
   // ── ELITE ──
   turtle:      { name: 'Turtle',       tier: 'elite',     color: '#16a085', icon: '🐢', hp: 320,  atk: 30, def: 18, speed: 30, xp: 80,  range: 32, lootMult: 2.2 },
@@ -140,42 +140,42 @@ export class EnemyManager {
   }
 
   _initialSpawn() {
-    // Pack spawning per zone — zone 1 is sparse, zone 5 is dense
-    const ZONE_PACKS = { 1: 20, 2: 26, 3: 22, 4: 26, 5: 20 };
-    const PACK_SIZE  = { 1: [3,5], 2: [3,5], 3: [3,6], 4: [4,6], 5: [4,6] };
-    const ELITE_PACKS = { 1: 3, 2: 4, 3: 4, 4: 5, 5: 5 };
+    // Camp spawning per zone — grouped encounters, ~2.5x denser than before
+    const ZONE_CAMPS = { 1: 50, 2: 60, 3: 55, 4: 60, 5: 50 };
+    const CAMP_SIZE  = { 1: [3,4], 2: [3,4], 3: [3,5], 4: [4,5], 5: [4,5] };
+    const ELITE_CAMPS = { 1: 6, 2: 8, 3: 8, 4: 10, 5: 10 };
 
-    // Spawn normal packs
+    // Spawn normal camps — each is 3-4 enemies around a central point
     for (let zoneId = 1; zoneId <= 5; zoneId++) {
       const bounds = this._getZoneSearchBounds(zoneId);
-      const packs  = ZONE_PACKS[zoneId];
-      const [minPack, maxPack] = PACK_SIZE[zoneId];
+      const camps  = ZONE_CAMPS[zoneId];
+      const [minCamp, maxCamp] = CAMP_SIZE[zoneId];
       const types  = ZONE_NORMAL[zoneId];
 
-      for (let p = 0; p < packs; p++) {
-        // Pick a pack center
-        const center = this._findValidSpot(bounds, zoneId, 60);
+      for (let p = 0; p < camps; p++) {
+        const center = this._findValidSpot(bounds, zoneId, 40);
         if (!center) continue;
-        const packType = types[Math.floor(Math.random() * types.length)];
-        const count = minPack + Math.floor(Math.random() * (maxPack - minPack + 1));
+        const campType = types[Math.floor(Math.random() * types.length)];
+        const count = minCamp + Math.floor(Math.random() * (maxCamp - minCamp + 1));
         for (let i = 0; i < count; i++) {
-          // Scatter around pack center (within ~5 tiles)
-          const scatter = 5 * TILE_SIZE;
+          // Scatter around camp center (within ~4 tiles)
+          const scatter = 4 * TILE_SIZE;
           const ox = (Math.random() - 0.5) * scatter * 2;
           const oy = (Math.random() - 0.5) * scatter * 2;
           const col = Math.floor((center.x + ox) / TILE_SIZE);
           const row = Math.floor((center.y + oy) / TILE_SIZE);
           if (!this._isBadSpawn(col, row)) {
-            this._spawnAt(packType, col, row, bounds, zoneId);
+            // First enemy in each camp is a mini-leader (20% more HP)
+            this._spawnAt(campType, col, row, bounds, zoneId, i === 0);
           }
         }
       }
 
-      // Spawn elite packs (smaller, 1-2 elites)
-      const elitePacks = ELITE_PACKS[zoneId];
+      // Spawn elite camps (1-2 elites per camp)
+      const eliteCamps = ELITE_CAMPS[zoneId];
       const eliteTypes = ZONE_ELITES[zoneId];
-      for (let p = 0; p < elitePacks; p++) {
-        const center = this._findValidSpot(bounds, zoneId, 80);
+      for (let p = 0; p < eliteCamps; p++) {
+        const center = this._findValidSpot(bounds, zoneId, 60);
         if (!center) continue;
         const eliteType = eliteTypes[Math.floor(Math.random() * eliteTypes.length)];
         const count = 1 + Math.floor(Math.random() * 2);
@@ -221,7 +221,7 @@ export class EnemyManager {
     return null;
   }
 
-  _spawnAt(type, col, row, bounds, zoneId) {
+  _spawnAt(type, col, row, bounds, zoneId, isLeader = false) {
     const def = ENEMY_TYPES[type];
     if (!def) return;
 
@@ -231,7 +231,9 @@ export class EnemyManager {
 
     // Scale stats slightly by zone for progression feel
     const zoneScale = 1 + (zoneId - 1) * 0.12;
-    const hp  = Math.floor(def.hp  * zoneScale);
+    // Camp leaders get 20% more HP and a slight atk boost
+    const leaderScale = isLeader && !isElite && !isMiniboss && !isBoss ? 1.2 : 1.0;
+    const hp  = Math.floor(def.hp  * zoneScale * leaderScale);
     const atk = Math.floor(def.atk * zoneScale);
 
     this.enemies.push({
@@ -247,11 +249,12 @@ export class EnemyManager {
       def: def.def,
       speed: def.speed,
       range: def.range,
-      color: def.color,
-      icon: def.icon,
-      name: def.name,
+      color: isLeader && !isElite && !isMiniboss && !isBoss ? def.color : def.color,
+      icon: isLeader && !isElite && !isMiniboss && !isBoss ? '⭐' : def.icon,
+      name: isLeader && !isElite && !isMiniboss && !isBoss ? def.name + ' Leader' : def.name,
       tier: def.tier,
-      xp: Math.floor(def.xp * zoneScale),
+      isLeader: isLeader && !isElite && !isMiniboss && !isBoss,
+      xp: Math.floor(def.xp * zoneScale * leaderScale),
       state: 'idle',
       attackCooldown: 0,
       chargeCooldown: 0,
