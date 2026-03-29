@@ -705,10 +705,7 @@ export class GameEngine {
     // Interact prompt
     if (this.nearNPC || this.nearChest || this.nearNode) this._drawInteractPrompt(ctx, W, H);
 
-    // Targeting cursor label (screen space, always on top)
-    if (this.targeting.active) {
-      this.targeting.drawCursorLabel(ctx, this._mouseScreen.x, this._mouseScreen.y, this.px, this.py);
-    }
+
   }
 
   _drawWorld(ctx, W, H, wcamX, wcamY) {
