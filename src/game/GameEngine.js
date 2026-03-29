@@ -463,15 +463,19 @@ export class GameEngine {
     return null;
   }
 
-  // Returns the auto-attack range in world-px based on class
+  // Returns { attackRange, stopRange } in world-px based on class
+  // attackRange = max distance to deal damage
+  // stopRange   = distance at which the player stops approaching (slightly inside attackRange for buffer)
   _getAutoAttackRange() {
     const classId = this.gameState.classData?.id || 'warrior';
+    // Check equipped weapon for potential range override
+    const weapon = this.gameState.equipped?.weapon;
     switch (classId) {
-      case 'archer': return 220;  // ranged — stay well back
-      case 'monk':   return 130;  // mid-range staff
-      case 'lancer': return 55;   // slightly longer melee reach
+      case 'archer': return { attackRange: 240, stopRange: 210 };  // ranged — hold well back
+      case 'monk':   return { attackRange: 140, stopRange: 120 };  // mid-range staff
+      case 'lancer': return { attackRange: 62,  stopRange: 54  };  // spear reach
       case 'warrior':
-      default:       return 44;   // standard melee
+      default:       return { attackRange: 50,  stopRange: 44  };  // standard sword
     }
   }
 
@@ -488,20 +492,21 @@ export class GameEngine {
 
     const dx = e.x - this.px, dy = e.y - this.py;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    const attackRange = this._getAutoAttackRange();
-    // Small buffer so ranged classes don't jitter at the exact edge
-    const stopRange = attackRange * 0.92;
+    const { attackRange, stopRange } = this._getAutoAttackRange();
 
-    if (dist > attackRange) {
-      // Move toward target — stop once inside valid attack range
+    if (dist > stopRange) {
+      // Move toward target — stop at stopRange, not all the way in
       const spd = PLAYER_SPEED * (this.gameState.classData?.baseStats?.speed || 1.0) * dt;
-      const nx = this.px + (dx / dist) * spd;
-      const ny = this.py + (dy / dist) * spd;
+      // Only move the remaining distance needed to reach stopRange
+      const moveNeeded = dist - stopRange;
+      const step = Math.min(spd, moveNeeded);
+      const nx = this.px + (dx / dist) * step;
+      const ny = this.py + (dy / dist) * step;
       this.facingAngle = Math.atan2(dy, dx);
       if (!this._isBlocked(nx, ny)) { this.px = nx; this.py = ny; }
       else if (!this._isBlocked(nx, this.py)) { this.px = nx; }
       else if (!this._isBlocked(this.px, ny)) { this.py = ny; }
-    } else {
+    } else if (dist <= attackRange) {
       // In range — stop movement and attack
       this.facingAngle = Math.atan2(dy, dx);
       this.destination = null;
