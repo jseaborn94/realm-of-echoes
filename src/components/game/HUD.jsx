@@ -134,8 +134,24 @@ export default function HUD({ gameState, onOpenInventory, onOpenSkills }) {
           <div className="ml-auto text-lg">{classData.icon}</div>
         </div>
 
-          {/* XP */}
-        <div className="mt-1">
+        {/* HP */}
+        <div className="mb-1">
+          <div className="flex justify-between mb-0.5">
+            <span className="text-xs font-cinzel" style={{ color: '#e63946' }}>HP</span>
+          </div>
+          <StatBar value={hp} max={maxHp} className="bar-hp" />
+        </div>
+
+        {/* MP */}
+        <div className="mb-1">
+          <div className="flex justify-between mb-0.5">
+            <span className="text-xs font-cinzel" style={{ color: '#4a9eff' }}>MP</span>
+          </div>
+          <StatBar value={mp} max={maxMp} className="bar-mp" />
+        </div>
+
+        {/* XP */}
+        <div className="mt-2">
           <div className="flex justify-between mb-0.5">
             <span className="text-xs font-cinzel" style={{ color: '#ffe88a' }}>XP</span>
             <span className="text-xs" style={{ color: '#5a4a2a', fontSize: '9px' }}>{Math.floor(xp)}/{xpNeeded}</span>
