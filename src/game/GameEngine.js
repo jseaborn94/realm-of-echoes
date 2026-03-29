@@ -6,6 +6,7 @@ import {
 import { WorldGenerator, TILE_COLORS, TILE, OBJ } from './WorldGenerator.js';
 import { EnemyManager } from './EnemyManager.js';
 import { GatheringSystem, addResourcesToInventory } from './GatheringSystem.js';
+import { TargetingSystem } from './TargetingSystem.js';
 
 export class GameEngine {
   constructor(canvas, gameState, onStateUpdate) {
@@ -56,6 +57,10 @@ export class GameEngine {
     this.nearNode = null;       // gathering node
     this.isGathering = false;   // currently holding F to gather
 
+    // Targeting / aiming system
+    this.targeting = new TargetingSystem();
+    this._mouseScreen = { x: 0, y: 0 }; // raw screen position
+
     this._bindKeys();
     this._resize();
   }
@@ -64,11 +69,25 @@ export class GameEngine {
     this._onKeyDown = (e) => {
       const k = e.key.toLowerCase();
 
-      // Skill keys
-      if (k === 'q') this._useSkill('Q');
-      if (k === 'w') this._useSkill('W');
-      if (k === 'e') this._useSkill('E');
-      if (k === 'r') this._useSkill('R');
+      // While aiming — same key again cancels; Escape also cancels
+      if (this.targeting.active) {
+        if (e.key === 'Escape' ||
+            (k === 'q' && this.targeting.skillKey === 'Q') ||
+            (k === 'w' && this.targeting.skillKey === 'W') ||
+            (k === 'e' && this.targeting.skillKey === 'E') ||
+            (k === 'r' && this.targeting.skillKey === 'R')) {
+          this.targeting.cancel();
+          return;
+        }
+        // Block other skill keys while aiming
+        if (['q','w','e','r'].includes(k)) return;
+      }
+
+      // Skill keys — enter aiming mode (or instant-cast for self_aoe)
+      if (k === 'q') this._beginSkill('Q');
+      if (k === 'w') this._beginSkill('W');
+      if (k === 'e') this._beginSkill('E');
+      if (k === 'r') this._beginSkill('R');
       if (k === '1') this._usePotion('hp');
       if (k === '2') this._usePotion('mp');
       if (k === 'f') {
@@ -84,13 +103,34 @@ export class GameEngine {
     this._mouseHeld = false;
 
     this._onMouseDown = (e) => {
-      if (e.button !== 0) return;
       if (e.target !== this.canvas) return;
+
+      // Right click — cancel aiming
+      if (e.button === 2) {
+        if (this.targeting.active) this.targeting.cancel();
+        return;
+      }
+
+      if (e.button !== 0) return;
+
+      // Left click while aiming — confirm cast
+      if (this.targeting.active) {
+        this.targeting.confirm();
+        return;
+      }
+
+      // Normal movement
       this._mouseHeld = true;
       this._setDestFromEvent(e);
     };
 
     this._onMouseMove = (e) => {
+      // Always track mouse position for targeting preview
+      this._mouseScreen = { x: e.clientX, y: e.clientY };
+      const worldX = (e.clientX + this.camX) / this.zoom;
+      const worldY = (e.clientY + this.camY) / this.zoom;
+      this.targeting.updateMouse(worldX, worldY);
+
       if (!this._mouseHeld) return;
       if (e.target !== this.canvas && e.buttons === 0) { this._mouseHeld = false; return; }
       this._setDestFromEvent(e);
@@ -99,6 +139,11 @@ export class GameEngine {
     this._onMouseUp = (e) => {
       if (e.button !== 0) return;
       this._mouseHeld = false;
+    };
+
+    this._onContextMenu = (e) => {
+      // Prevent right-click context menu on canvas
+      e.preventDefault();
     };
 
     this._setDestFromEvent = (e) => {
@@ -123,6 +168,7 @@ export class GameEngine {
     window.addEventListener('mouseup', this._onMouseUp);
     this.canvas.addEventListener('mousedown', this._onMouseDown);
     this.canvas.addEventListener('mousemove', this._onMouseMove);
+    this.canvas.addEventListener('contextmenu', this._onContextMenu);
   }
 
   _resize() {
@@ -144,6 +190,48 @@ export class GameEngine {
     window.removeEventListener('mouseup', this._onMouseUp);
     this.canvas.removeEventListener('mousedown', this._onMouseDown);
     this.canvas.removeEventListener('mousemove', this._onMouseMove);
+    this.canvas.removeEventListener('contextmenu', this._onContextMenu);
+  }
+
+  // Called on skill key press — validates then either enters aiming or instant-casts (self_aoe)
+  _beginSkill(key) {
+    const gs = this.gameState;
+    if (this.cooldowns[key] > 0) return;
+    if (key === 'R' && gs.level < 6) {
+      this.damageNumbers.push({ x: this.px, y: this.py - 30, text: 'Unlock R at Level 6!', color: '#aaaaaa', life: 1.5 });
+      return;
+    }
+    if (key !== 'R') {
+      const skillLevel = gs.skillLevels?.[key] || 0;
+      if (skillLevel === 0) {
+        this.damageNumbers.push({ x: this.px, y: this.py - 30, text: `${key} locked — invest a skill point!`, color: '#aaaaaa', life: 1.5 });
+        return;
+      }
+    }
+    const abilities = gs.classData?.abilities || [];
+    const keyMap = { Q: 0, W: 1, E: 2, R: 3 };
+    const ability = abilities[keyMap[key]];
+    if (!ability) return;
+    const cost = ability.mpCost || 0;
+    if (gs.mp < cost) {
+      this.damageNumbers.push({ x: this.px, y: this.py - 30, text: 'No MP!', color: '#4a9eff', life: 1.5 });
+      return;
+    }
+
+    // Try to start aiming — if targeting returns true, aiming mode is active
+    const entered = this.targeting.startAiming(key, gs.classData?.id);
+
+    if (entered) {
+      // For self_aoe: targeting.confirmed is already true, execute immediately
+      if (this.targeting.confirmed) {
+        this._executeSkill(key, this.px, this.py);
+        this.targeting.consume();
+      }
+      // For other types: wait for user to click (handled in _update)
+    } else {
+      // No targeting config found — fall back to instant cast
+      this._useSkill(key);
+    }
   }
 
   _loop() {
@@ -293,6 +381,19 @@ export class GameEngine {
       }
     }
 
+    // ── Targeting confirmation ──
+    if (this.targeting.confirmed || this.targeting.cancelled) {
+      const key = this.targeting.skillKey;
+      const target = this.targeting.mouseWorld
+        ? this.targeting.getTarget(this.px, this.py)
+        : { x: this.px, y: this.py };
+      const wasConfirmed = this.targeting.confirmed;
+      this.targeting.consume(); // clears flags + active state if cancelled
+      if (wasConfirmed && key) {
+        this._executeSkill(key, target.x, target.y);
+      }
+    }
+
     // ── Enemy AI & Combat ──
     const pushDmgNum = (x, y, text, color, big) => {
       this.damageNumbers.push({ x, y, text, color, life: 1.2, big: !!big });
@@ -348,6 +449,55 @@ export class GameEngine {
       if (this.world.getTile(col, row) === TILE.WATER) return true;
       return this.world.isBlocked(col, row);
     });
+  }
+
+  // Perform the actual skill cast at a given world target position
+  _executeSkill(key, targetX, targetY) {
+    const gs = this.gameState;
+    const abilities = gs.classData?.abilities || [];
+    const keyMap = { Q: 0, W: 1, E: 2, R: 3 };
+    const ability = abilities[keyMap[key]];
+    if (!ability) return;
+
+    const cost = ability.mpCost || 0;
+    gs.mp -= cost;
+
+    const skillLevel = gs.skillLevels?.[key] || 0;
+    const classAtk = gs.classData?.baseStats?.attack || 20;
+    const equipAtk = gs.equipStats?.attack || 0;
+
+    if (ability.type !== 'utility') {
+      const hits = this.enemyManager.applyAbilityDamage(this.px, this.py, ability.type, skillLevel, classAtk, equipAtk);
+      for (const hit of hits) {
+        this.damageNumbers.push({
+          x: hit.x + (Math.random() - 0.5) * 30,
+          y: hit.y - 20,
+          text: `-${hit.dmg}`,
+          color: ability.type === 'ultimate' ? '#ff9800' : '#ffffff',
+          life: 1.2,
+          big: ability.type === 'ultimate',
+        });
+        if (hit.killed) {
+          this.effects.push({ x: hit.x, y: hit.y, radius: 30, life: 0.5, maxLife: 0.5, color: '#ff4444' });
+          this.damageNumbers.push({ x: hit.x, y: hit.y - 30, text: 'SLAIN!', color: '#ffe74a', life: 1.5, big: false });
+        }
+      }
+      // Visual effect at the targeted position
+      this.effects.push({
+        x: targetX,
+        y: targetY,
+        radius: ability.type === 'aoe' || ability.type === 'ultimate' ? 60 : 25,
+        life: 0.5, maxLife: 0.5,
+        color: gs.classData?.color || '#ffffff',
+      });
+    }
+
+    if (ability.type === 'utility') {
+      this.damageNumbers.push({ x: this.px, y: this.py - 30, text: ability.name + '!', color: '#4caf50', life: 1.0 });
+    }
+
+    this.cooldowns[key] = this.skillCooldownMax[key];
+    this.onStateUpdate({ ...gs });
   }
 
   _useSkill(key) {
@@ -522,8 +672,18 @@ export class GameEngine {
     // Draw effects
     this._drawEffects(ctx, wcamX, wcamY);
 
+    // Draw targeting preview (world-space, before player so player renders on top)
+    if (this.targeting.active && this.targeting.config?.type !== 'self_aoe') {
+      this.targeting.draw(ctx, W / z / 2, H / z / 2, wcamX, wcamY, z);
+    }
+
     // Draw player (always screen-center in world-space)
     this._drawPlayer(ctx, W / z, H / z, wcamX, wcamY);
+
+    // Draw self-aoe preview around player (also world-space)
+    if (this.targeting.active && this.targeting.config?.type === 'self_aoe') {
+      this.targeting.drawSelfAoe(ctx, W / z / 2, H / z / 2);
+    }
 
     ctx.restore(); // end zoom transform
 
@@ -544,6 +704,11 @@ export class GameEngine {
 
     // Interact prompt
     if (this.nearNPC || this.nearChest || this.nearNode) this._drawInteractPrompt(ctx, W, H);
+
+    // Targeting cursor label (screen space, always on top)
+    if (this.targeting.active) {
+      this.targeting.drawCursorLabel(ctx, this._mouseScreen.x, this._mouseScreen.y, this.px, this.py);
+    }
   }
 
   _drawWorld(ctx, W, H, wcamX, wcamY) {
