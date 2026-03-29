@@ -6,7 +6,7 @@ export const WORLD_WIDTH = WORLD_COLS * TILE_SIZE;
 export const WORLD_HEIGHT = WORLD_ROWS * TILE_SIZE;
 
 export const PLAYER_SPEED = 180; // px/sec
-export const FOG_RADIUS = 105; // Tight immersive view — shows roughly 6-7 tiles radius
+export const FOG_RADIUS = 82; // Very tight immersive view — close-up exploration feel
 
 // Level tier colors
 export const LEVEL_TIER_COLORS = {
