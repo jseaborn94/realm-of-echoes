@@ -21,9 +21,10 @@ export class GameEngine {
     this.lastTime = 0;
     this.animFrame = null;
 
-    // Camera
+    // Camera & zoom
     this.camX = 0;
     this.camY = 0;
+    this.zoom = 2.5; // world pixels → screen pixels scale factor
 
     // Player position (world px) — Evergreen Hollow spawn (organic layout: col 185, row 390)
     this.px = 185 * TILE_SIZE;
@@ -73,22 +74,35 @@ export class GameEngine {
       }
     };
 
+    this._mouseHeld = false;
+
     this._onMouseDown = (e) => {
-      // Only left click, only on the canvas itself (not UI overlays)
       if (e.button !== 0) return;
       if (e.target !== this.canvas) return;
+      this._mouseHeld = true;
+      this._setDestFromEvent(e);
+    };
 
-      // Convert screen coords to world coords
-      const worldX = e.clientX + this.camX;
-      const worldY = e.clientY + this.camY;
+    this._onMouseMove = (e) => {
+      if (!this._mouseHeld) return;
+      if (e.target !== this.canvas && e.buttons === 0) { this._mouseHeld = false; return; }
+      this._setDestFromEvent(e);
+    };
 
-      // Don't navigate to water or out-of-bounds
+    this._onMouseUp = (e) => {
+      if (e.button !== 0) return;
+      this._mouseHeld = false;
+    };
+
+    this._setDestFromEvent = (e) => {
+      // Convert screen coords → world coords accounting for zoom
+      const worldX = (e.clientX + this.camX) / this.zoom;
+      const worldY = (e.clientY + this.camY) / this.zoom;
       const col = Math.floor(worldX / TILE_SIZE);
       const row = Math.floor(worldY / TILE_SIZE);
       if (col < 0 || col >= WORLD_COLS || row < 0 || row >= WORLD_ROWS) return;
-
       this.destination = { x: worldX, y: worldY };
-      this.clickIndicator = { x: worldX, y: worldY, life: 0.6, maxLife: 0.6 };
+      this.clickIndicator = { x: worldX, y: worldY, life: 0.4, maxLife: 0.4 };
     };
 
     this._onKeyUp = (e) => {
@@ -99,7 +113,9 @@ export class GameEngine {
     };
     window.addEventListener('keydown', this._onKeyDown);
     window.addEventListener('keyup', this._onKeyUp);
+    window.addEventListener('mouseup', this._onMouseUp);
     this.canvas.addEventListener('mousedown', this._onMouseDown);
+    this.canvas.addEventListener('mousemove', this._onMouseMove);
   }
 
   _resize() {
@@ -118,7 +134,9 @@ export class GameEngine {
     if (this.animFrame) cancelAnimationFrame(this.animFrame);
     window.removeEventListener('keydown', this._onKeyDown);
     window.removeEventListener('keyup', this._onKeyUp);
+    window.removeEventListener('mouseup', this._onMouseUp);
     this.canvas.removeEventListener('mousedown', this._onMouseDown);
+    this.canvas.removeEventListener('mousemove', this._onMouseMove);
   }
 
   _loop() {
@@ -180,11 +198,12 @@ export class GameEngine {
       if (this.clickIndicator.life <= 0) this.clickIndicator = null;
     }
 
-    // Camera
-    this.camX = this.px - this.canvas.width / 2;
-    this.camY = this.py - this.canvas.height / 2;
-    this.camX = Math.max(0, Math.min(WORLD_WIDTH - this.canvas.width, this.camX));
-    this.camY = Math.max(0, Math.min(WORLD_HEIGHT - this.canvas.height, this.camY));
+    // Camera — keep player centered with zoom applied
+    const z = this.zoom;
+    this.camX = this.px * z - this.canvas.width / 2;
+    this.camY = this.py * z - this.canvas.height / 2;
+    this.camX = Math.max(0, Math.min(WORLD_WIDTH * z - this.canvas.width, this.camX));
+    this.camY = Math.max(0, Math.min(WORLD_HEIGHT * z - this.canvas.height, this.camY));
 
     // Zone detection
     const col = Math.floor(this.px / TILE_SIZE);
@@ -445,88 +464,93 @@ export class GameEngine {
     const ctx = this.ctx;
     const W = this.canvas.width;
     const H = this.canvas.height;
+    const z = this.zoom;
+    // World-space camera offset (in world pixels) used by zoomed draw methods
+    const wcamX = this.camX / z;
+    const wcamY = this.camY / z;
 
     ctx.clearRect(0, 0, W, H);
 
+    // Apply zoom — all world drawing uses scaled coordinates
+    ctx.save();
+    ctx.scale(z, z);
+
     // Draw tiles
-    this._drawWorld(ctx, W, H);
+    this._drawWorld(ctx, W, H, wcamX, wcamY);
 
     // Draw objects
-    this._drawObjects(ctx);
+    this._drawObjects(ctx, wcamX, wcamY);
 
     // Draw NPCs
-    this._drawNPCs(ctx);
+    this._drawNPCs(ctx, wcamX, wcamY);
 
-    // Draw enemies
-    this.enemyManager.draw(ctx, this.camX, this.camY);
+    // Draw enemies (ctx is already scaled by z, pass world-space cam)
+    this.enemyManager.draw(ctx, wcamX, wcamY);
 
-    // Draw gathering nodes (sheep + progress bars)
-    this.gatheringSystem.draw(ctx, this.camX, this.camY);
+    // Draw gathering nodes (ctx is already scaled by z, pass world-space cam)
+    this.gatheringSystem.draw(ctx, wcamX, wcamY);
 
     // Draw effects
-    this._drawEffects(ctx);
+    this._drawEffects(ctx, wcamX, wcamY);
 
-    // Draw player
-    this._drawPlayer(ctx, W, H);
+    // Draw player (always screen-center in world-space)
+    this._drawPlayer(ctx, W / z, H / z, wcamX, wcamY);
 
-    // Fog of war
+    ctx.restore(); // end zoom transform
+
+    // Fog of war — drawn in screen space on top
     this._drawFog(ctx, W, H);
 
-    // Damage numbers
-    this._drawDamageNumbers(ctx);
+    // Damage numbers — screen space
+    this._drawDamageNumbers(ctx, wcamX, wcamY, z);
 
-    // Zone tint overlay
+    // Zone tint
     this._drawZoneTint(ctx, W, H);
 
     // Zone label
-    if (this.zoneLabel) {
-      this._drawZoneLabel(ctx, W, H);
-    }
+    if (this.zoneLabel) this._drawZoneLabel(ctx, W, H);
 
     // Click indicator
-    if (this.clickIndicator) {
-      this._drawClickIndicator(ctx);
-    }
+    if (this.clickIndicator) this._drawClickIndicator(ctx, wcamX, wcamY, z);
 
     // Interact prompt
-    if (this.nearNPC || this.nearChest || this.nearNode) {
-      this._drawInteractPrompt(ctx, W, H);
-    }
+    if (this.nearNPC || this.nearChest || this.nearNode) this._drawInteractPrompt(ctx, W, H);
   }
 
-  _drawWorld(ctx, W, H) {
-    const startCol = Math.max(0, Math.floor(this.camX / TILE_SIZE));
-    const endCol   = Math.min(WORLD_COLS, Math.ceil((this.camX + W) / TILE_SIZE) + 1);
-    const startRow = Math.max(0, Math.floor(this.camY / TILE_SIZE));
-    const endRow   = Math.min(WORLD_ROWS, Math.ceil((this.camY + H) / TILE_SIZE) + 1);
+  _drawWorld(ctx, W, H, wcamX, wcamY) {
+    const visW = W / this.zoom;
+    const visH = H / this.zoom;
+    const startCol = Math.max(0, Math.floor(wcamX / TILE_SIZE));
+    const endCol   = Math.min(WORLD_COLS, Math.ceil((wcamX + visW) / TILE_SIZE) + 1);
+    const startRow = Math.max(0, Math.floor(wcamY / TILE_SIZE));
+    const endRow   = Math.min(WORLD_ROWS, Math.ceil((wcamY + visH) / TILE_SIZE) + 1);
 
     for (let row = startRow; row < endRow; row++) {
       for (let col = startCol; col < endCol; col++) {
         const tile = this.world.getTile(col, row);
         const config = TILE_COLORS[tile] || TILE_COLORS[0];
-        const sx = col * TILE_SIZE - this.camX;
-        const sy = row * TILE_SIZE - this.camY;
-
+        const sx = col * TILE_SIZE - wcamX;
+        const sy = row * TILE_SIZE - wcamY;
         ctx.fillStyle = config.fill;
         ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
       }
     }
   }
 
-  _drawObjects(ctx) {
-    const W = this.canvas.width;
-    const H = this.canvas.height;
-    const startCol = Math.max(0, Math.floor(this.camX / TILE_SIZE));
-    const endCol   = Math.min(WORLD_COLS, Math.ceil((this.camX + W) / TILE_SIZE) + 1);
-    const startRow = Math.max(0, Math.floor(this.camY / TILE_SIZE));
-    const endRow   = Math.min(WORLD_ROWS, Math.ceil((this.camY + H) / TILE_SIZE) + 1);
+  _drawObjects(ctx, wcamX, wcamY) {
+    const visW = this.canvas.width / this.zoom;
+    const visH = this.canvas.height / this.zoom;
+    const startCol = Math.max(0, Math.floor(wcamX / TILE_SIZE));
+    const endCol   = Math.min(WORLD_COLS, Math.ceil((wcamX + visW) / TILE_SIZE) + 1);
+    const startRow = Math.max(0, Math.floor(wcamY / TILE_SIZE));
+    const endRow   = Math.min(WORLD_ROWS, Math.ceil((wcamY + visH) / TILE_SIZE) + 1);
 
     for (let row = startRow; row < endRow; row++) {
       for (let col = startCol; col < endCol; col++) {
         const obj = this.world.getObj(col, row);
         if (obj === OBJ.NONE) continue;
-        const sx = col * TILE_SIZE - this.camX + TILE_SIZE / 2;
-        const sy = row * TILE_SIZE - this.camY + TILE_SIZE / 2;
+        const sx = col * TILE_SIZE - wcamX + TILE_SIZE / 2;
+        const sy = row * TILE_SIZE - wcamY + TILE_SIZE / 2;
         this._drawObject(ctx, obj, sx, sy, col, row);
       }
     }
@@ -622,10 +646,10 @@ export class GameEngine {
     ctx.restore();
   }
 
-  _drawNPCs(ctx) {
+  _drawNPCs(ctx, wcamX, wcamY) {
     for (const npc of this.world.npcs) {
-      const sx = npc.col * TILE_SIZE - this.camX + TILE_SIZE / 2;
-      const sy = npc.row * TILE_SIZE - this.camY + TILE_SIZE / 2;
+      const sx = npc.col * TILE_SIZE - wcamX + TILE_SIZE / 2;
+      const sy = npc.row * TILE_SIZE - wcamY + TILE_SIZE / 2;
 
       // Body
       ctx.fillStyle = '#c8a060';
@@ -648,7 +672,7 @@ export class GameEngine {
     }
   }
 
-  _drawPlayer(ctx, W, H) {
+  _drawPlayer(ctx, W, H, wcamX, wcamY) {
     const gs = this.gameState;
     const px = W / 2;
     const py = H / 2;
@@ -721,7 +745,7 @@ export class GameEngine {
     ctx.fillText(gs.level, px + 12, py - 21);
   }
 
-  _drawEffects(ctx) {
+  _drawEffects(ctx, wcamX, wcamY) {
     for (const e of this.effects) {
       const alpha = e.life / e.maxLife;
       ctx.save();
@@ -729,7 +753,7 @@ export class GameEngine {
       ctx.strokeStyle = e.color;
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(e.x - this.camX, e.y - this.camY, e.radius * (1 - alpha + 0.3), 0, Math.PI * 2);
+      ctx.arc(e.x - wcamX, e.y - wcamY, e.radius * (1 - alpha + 0.3), 0, Math.PI * 2);
       ctx.stroke();
       ctx.fillStyle = e.color;
       ctx.globalAlpha = alpha * 0.2;
@@ -739,40 +763,40 @@ export class GameEngine {
   }
 
   _drawFog(ctx, W, H) {
-    const gs = this.gameState;
     const px = W / 2;
     const py = H / 2;
     const radius = FOG_RADIUS;
-
     const zone = this.currentZone;
     const fogColor = zone?.fogColor || 'rgba(0,0,0,0.93)';
 
-    // Radial gradient mask
-    const grad = ctx.createRadialGradient(px, py, radius * 0.5, px, py, radius);
-    grad.addColorStop(0, 'rgba(0,0,0,0)');
-    grad.addColorStop(0.7, 'rgba(0,0,0,0)');
-    grad.addColorStop(1, fogColor);
+    // Use an offscreen canvas so destination-out only affects the fog layer,
+    // not the world already drawn on the main canvas.
+    if (!this._fogCanvas || this._fogCanvas.width !== W || this._fogCanvas.height !== H) {
+      this._fogCanvas = document.createElement('canvas');
+      this._fogCanvas.width = W;
+      this._fogCanvas.height = H;
+    }
+    const fc = this._fogCanvas;
+    const fctx = fc.getContext('2d');
+    fctx.clearRect(0, 0, W, H);
 
-    // Outer fog
-    ctx.fillStyle = fogColor;
-    ctx.fillRect(0, 0, W, H);
+    // Fill the whole offscreen canvas with fog
+    fctx.fillStyle = fogColor;
+    fctx.fillRect(0, 0, W, H);
 
-    // Clear center
-    ctx.save();
-    ctx.globalCompositeOperation = 'destination-out';
-    ctx.fillStyle = grad;
+    // Punch a soft transparent circle where the player can see
+    fctx.globalCompositeOperation = 'destination-out';
+    const grad = fctx.createRadialGradient(px, py, 0, px, py, radius);
+    grad.addColorStop(0,    'rgba(0,0,0,1)');   // fully clear at center
+    grad.addColorStop(0.65, 'rgba(0,0,0,0.95)');
+    grad.addColorStop(0.85, 'rgba(0,0,0,0.4)');
+    grad.addColorStop(1,    'rgba(0,0,0,0)');   // fog fully returns at edge
+    fctx.fillStyle = grad;
+    fctx.fillRect(0, 0, W, H);
+    fctx.globalCompositeOperation = 'source-over';
 
-    // Create circular clear area
-    const clearGrad = ctx.createRadialGradient(px, py, 0, px, py, radius);
-    clearGrad.addColorStop(0, 'rgba(0,0,0,1)');
-    clearGrad.addColorStop(0.65, 'rgba(0,0,0,0.95)');
-    clearGrad.addColorStop(0.85, 'rgba(0,0,0,0.5)');
-    clearGrad.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = clearGrad;
-    ctx.beginPath();
-    ctx.arc(px, py, radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    // Composite the fog layer on top of the main canvas
+    ctx.drawImage(fc, 0, 0);
   }
 
   _drawZoneTint(ctx, W, H) {
@@ -785,10 +809,10 @@ export class GameEngine {
     ctx.restore();
   }
 
-  _drawDamageNumbers(ctx) {
+  _drawDamageNumbers(ctx, wcamX, wcamY, z) {
     for (const d of this.damageNumbers) {
-      const sx = d.x - this.camX;
-      const sy = d.y - this.camY - (1 - d.life) * 40;
+      const sx = (d.x - wcamX) * z;
+      const sy = (d.y - wcamY) * z - (1 - d.life) * 40;
       ctx.save();
       ctx.globalAlpha = d.life;
       ctx.font = `${d.big ? 'bold 20px' : 'bold 14px'} Cinzel, serif`;
@@ -814,10 +838,10 @@ export class GameEngine {
     ctx.restore();
   }
 
-  _drawClickIndicator(ctx) {
+  _drawClickIndicator(ctx, wcamX, wcamY, z) {
     const ci = this.clickIndicator;
-    const sx = ci.x - this.camX;
-    const sy = ci.y - this.camY;
+    const sx = (ci.x - wcamX) * z;
+    const sy = (ci.y - wcamY) * z;
     const alpha = ci.life / ci.maxLife;
     const scale = 1 + (1 - alpha) * 0.5;
 
