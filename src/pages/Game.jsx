@@ -13,6 +13,7 @@ import DialoguePanel from '@/components/game/DialoguePanel.jsx';
 import LootNotification from '@/components/game/LootNotification.jsx';
 import CraftingPanel from '@/components/game/CraftingPanel.jsx';
 import WorldMap from '@/components/game/WorldMap.jsx';
+import GMPanel from '@/components/game/GMPanel.jsx';
 import { getNPCRole, consumeInputs as craftConsume } from '@/game/CraftingRecipes.js';
 import { addResourcesToInventory } from '@/game/GatheringSystem.js';
 
@@ -66,6 +67,7 @@ export default function Game() {
   const [showSkills, setShowSkills] = useState(false);
   const [showWorldMap, setShowWorldMap] = useState(false);
   const [showPauseMenu, setShowPauseMenu] = useState(false);
+  const [showGMPanel, setShowGMPanel] = useState(false);
   const [lootItem, setLootItem] = useState(null);
   const [craftingNPC, setCraftingNPC] = useState(null);
 
@@ -188,6 +190,14 @@ export default function Game() {
   useEffect(() => {
     if (!gameStarted) return;
     const handler = (e) => {
+      // F10 — GM Panel (admin only)
+      if (e.key === 'F10') {
+        e.preventDefault();
+        if (gameState?.isAdmin) {
+          setShowGMPanel(v => !v);
+        }
+        return;
+      }
       if (e.key === 'Escape') {
         e.preventDefault();
         // If pause menu is open, close it
@@ -235,7 +245,7 @@ export default function Game() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [gameStarted, gameState, showInventory, showSkills, showWorldMap, craftingNPC, showPauseMenu]);
+  }, [gameStarted, gameState, showInventory, showSkills, showWorldMap, craftingNPC, showPauseMenu, showGMPanel]);
 
   function handleEquip(item, slot) {
     setGameState(prev => {
@@ -459,6 +469,17 @@ export default function Game() {
       {/* World Map */}
       {showWorldMap && gameState && (
         <WorldMap gameState={gameState} onClose={() => setShowWorldMap(false)} />
+      )}
+
+      {/* GM Panel (admin only) */}
+      {gameState?.isAdmin && (
+        <GMPanel
+          isOpen={showGMPanel}
+          onClose={() => setShowGMPanel(false)}
+          gameState={gameState}
+          onStateChange={setGameState}
+          gameEngine={engineRef.current}
+        />
       )}
 
       {/* Controls hint */}
