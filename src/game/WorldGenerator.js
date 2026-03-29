@@ -1,5 +1,5 @@
 import { TILE_SIZE, WORLD_COLS, WORLD_ROWS, getZoneAt } from './constants.js';
-import { NPCS } from './NPCDefinitions.js';
+import { getAllNPCs } from './NPCRegistry.js';
 
 // ─── Seeded deterministic RNG ───────────────────────────────────────────────
 function mulberry32(seed) {
@@ -440,8 +440,15 @@ export class WorldGenerator {
 
   // ── NPCs ─────────────────────────────────────────────────────────────────
   _placeNPCs() {
-    // Import NPCS from NPCDefinitions and populate from there
-    this.npcs = Object.values(NPCS).map(npc => ({
+    // Get NPCs from registry with safe fallback
+    const npcs = getAllNPCs();
+    if (!npcs || npcs.length === 0) {
+      console.warn('[WorldGenerator] NPC registry is empty, skipping NPC placement');
+      this.npcs = [];
+      return;
+    }
+
+    this.npcs = npcs.map(npc => ({
       id: npc.id,
       col: npc.col,
       row: npc.row,

@@ -3,19 +3,24 @@
  * Tracks active quests, objectives, and turn-ins
  */
 
-import { QUESTS, QUEST_STATE, getQuestById } from './QuestSystem.js';
+import { QUEST_STATE, getQuestById, getAllQuests } from './QuestRegistry.js';
 
 export class QuestManager {
   constructor() {
     // questId -> { state, progress }
     this.questState = {};
     // Initialize all quests as NOT_STARTED
-    Object.keys(QUESTS).forEach(questId => {
-      this.questState[questId] = {
-        state: QUEST_STATE.NOT_STARTED,
-        progress: 0,
-      };
-    });
+    const quests = getAllQuests();
+    if (quests && quests.length > 0) {
+      quests.forEach(quest => {
+        this.questState[quest.id] = {
+          state: QUEST_STATE.NOT_STARTED,
+          progress: 0,
+        };
+      });
+    } else {
+      console.warn('[QuestManager] No quests found in registry');
+    }
   }
 
   /**

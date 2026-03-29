@@ -1,30 +1,7 @@
 import { TILE_SIZE, WORLD_COLS, WORLD_ROWS } from './constants.js';
 import { TILE } from './WorldGenerator.js';
 import { assetIntegration } from './AssetIntegration.js';
-
-// Resource node types
-export const NODE_TYPE = {
-  TREE: 'tree',
-  ROCK: 'rock',
-  SHEEP: 'sheep',
-};
-
-// What each node drops
-export const NODE_DROPS = {
-  [NODE_TYPE.TREE]:  [{ id: 'wood',     name: 'Wood',     icon: '🪵', qty: 2, rarity: 'common' }],
-  [NODE_TYPE.ROCK]:  [{ id: 'ore',      name: 'Ore',      icon: '🪨', qty: 1, rarity: 'common' }],
-  [NODE_TYPE.SHEEP]: [
-    { id: 'raw_meat', name: 'Raw Meat', icon: '🥩', qty: 1, rarity: 'common' },
-    { id: 'hide',     name: 'Hide',     icon: '🟫', qty: 1, rarity: 'common' },
-    { id: 'wool',     name: 'Wool',     icon: '🧶', qty: 1, rarity: 'common' },
-  ],
-};
-
-const RESPAWN_DELAY = {
-  [NODE_TYPE.TREE]:  30000, // 30s
-  [NODE_TYPE.ROCK]:  45000, // 45s
-  [NODE_TYPE.SHEEP]: 60000, // 60s
-};
+import { NODE_TYPE, NODE_DROPS, RESPAWN_DELAY, getNodeDrops, getNodeRespawnDelay } from './GatherNodeRegistry.js';
 
 export class GatheringSystem {
   constructor(world) {
@@ -145,14 +122,16 @@ export class GatheringSystem {
         // Done!
         node.active = false;
         node.harvesting = false;
-        const drops = NODE_DROPS[node.type].map(d => ({ ...d }));
+        const nodeLoot = getNodeDrops(node.type);
+        const drops = nodeLoot.map(d => ({ ...d }));
         completed.push({ node, drops });
         // Queue respawn
+        const respawnDelay = getNodeRespawnDelay(node.type);
         this.respawnQueue.push({
           type: node.type,
           col: node.col,
           row: node.row,
-          spawnTime: now + RESPAWN_DELAY[node.type],
+          spawnTime: now + respawnDelay,
         });
       }
     }

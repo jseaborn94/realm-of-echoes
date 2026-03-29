@@ -21,8 +21,13 @@ import QuestOfferPanel from '@/components/game/QuestOfferPanel.jsx';
 import { getNPCRole, consumeInputs as craftConsume } from '@/game/CraftingRecipes.js';
 import { addResourcesToInventory } from '@/game/GatheringSystem.js';
 import { getSkillsByClass } from '@/game/SkillSystem.js';
-import { getNPCById } from '@/game/NPCDefinitions.js';
-import { getQuestById } from '@/game/QuestSystem.js';
+import { getNPCById } from '@/game/NPCRegistry.js';
+import { getQuestById } from '@/game/QuestRegistry.js';
+// Initialize registries on module load
+import '@/game/NPCRegistry.js';
+import '@/game/QuestRegistry.js';
+import '@/game/EnemyRegistry.js';
+import '@/game/GatherNodeRegistry.js';
 
 const initialGameState = (classId, playerName) => {
   const classData = CLASSES[classId];

@@ -2,6 +2,7 @@ import {
   TILE_SIZE, WORLD_COLS, WORLD_ROWS, WORLD_WIDTH, WORLD_HEIGHT,
   PLAYER_SPEED, FOG_RADIUS, getLevelTierColor, xpForLevel, getZoneAt
 } from './constants.js';
+import { registryManager } from './RegistryManager.js';
 // FOG_RADIUS is in screen pixels (used for fog draw + visibility culling of labels)
 import { WorldGenerator, TILE_COLORS, TILE, OBJ } from './WorldGenerator.js';
 import { EnemyManager } from './EnemyManager.js';
@@ -23,6 +24,11 @@ export class GameEngine {
     this.ctx = canvas.getContext('2d');
     this.gameState = gameState;
     this.onStateUpdate = onStateUpdate;
+
+    // Initialize all registries at game start
+    registryManager.initAll();
+    const status = registryManager.getStatus();
+    console.log('[GameEngine] Registry Status:', status);
 
     this.world = new WorldGenerator();
     this.enemyManager = new EnemyManager(this.world);
