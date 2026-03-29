@@ -461,11 +461,18 @@ export class GameEngine {
       gs.mp = Math.max(0, Math.min(gs.maxMp, gs.mp + 5 * dt));
     }
 
-    // Effects - use sprite-based rendering
+    // Effects - use sprite-based rendering with defensive filtering
     this.effects = this.effects.filter(e => {
+      // Defensive: skip null/undefined effects
+      if (!e || typeof e.life !== 'number') return false;
       e.life -= dt;
       return e.life > 0;
     });
+    
+    // Debug logging in dev mode (optional)
+    if (gameState?._debugEffects && this.effects.length > 0) {
+      console.log(`[DEBUG] Active effects: ${this.effects.length}`);
+    }
 
     // Update skill FX zones
     skillFX.update(dt);
@@ -476,6 +483,8 @@ export class GameEngine {
     // Update buff system
     buffSystem.update(dt);
     this.damageNumbers = this.damageNumbers.filter(d => {
+      // Defensive: skip null/undefined damage numbers
+      if (!d || typeof d.life !== 'number') return false;
       d.life -= dt;
       return d.life > 0;
     });
@@ -1128,6 +1137,8 @@ export class GameEngine {
 
   _drawEffects(ctx, wcamX, wcamY) {
     for (const e of this.effects) {
+      // Defensive: skip invalid effects
+      if (!e || !e.life || !e.maxLife || !e.x || !e.y) continue;
       const alpha = e.life / e.maxLife;
       const screenX = (e.x - wcamX) * this.zoom;
       const screenY = (e.y - wcamY) * this.zoom;
