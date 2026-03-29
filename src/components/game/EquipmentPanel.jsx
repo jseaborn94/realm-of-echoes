@@ -70,18 +70,16 @@ function EquipmentSlot({ slotKey, item, onDrop, onUnequip, classId }) {
   };
 
   const handleDrop = (e) => {
-    e.preventDefault();
-    setDragOver(false);
-    setIsValidDrag(false);
-    try {
-      const itemData = JSON.parse(e.dataTransfer.getData('application/json'));
-      const normalized = normalizeItem(itemData);
-      if (canEquipIntoSlot(normalized, slotKey)) {
-        onDrop(itemData, slotKey);
-      }
-    } catch (err) {
-      console.error('Drop error:', err);
-    }
+   e.preventDefault();
+   setDragOver(false);
+   setIsValidDrag(false);
+   try {
+     const itemData = JSON.parse(e.dataTransfer.getData('application/json'));
+     // Pass both the new item and any occupied slot item for atomic swap
+     onDrop(itemData, slotKey);
+   } catch (err) {
+     console.error('Drop error:', err);
+   }
   };
 
   return (

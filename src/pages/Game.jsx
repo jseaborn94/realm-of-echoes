@@ -237,13 +237,50 @@ export default function Game() {
   function handleEquip(item, slot) {
     setGameState(prev => {
       if (!prev) return prev;
+      
       const newEquipped = { ...prev.equipped };
-      // Put previously equipped item back in bag
       const oldItem = newEquipped[slot];
-      const newInventory = [...prev.inventory];
-      if (oldItem && !newInventory.find(i => i.id === oldItem.id)) {
+      
+      // Determine destination slot for swapped item
+      let swapSourceSlot = slot;
+      if (oldItem) {
+        // For ring swaps, find the source slot of the new item
+        const newItemSlot = item.equipmentSlot || item.slot;
+        if (newItemSlot === 'ring' && (slot === 'ring1' || slot === 'ring2')) {
+          // Ring is being equipped into one slot; we'll place old item back
+          swapSourceSlot = slot;
+        }
+      }
+
+      // Check inventory space for old item
+      if (oldItem) {
+        // Count non-resource items in inventory
+        const gearCount = prev.inventory.filter(i => !i.isResource).length;
+        const maxGearSlots = 20; // reasonable backpack limit
+        
+        if (gearCount >= maxGearSlots) {
+          // Inventory full — show feedback and abort swap
+          const msg = `Inventory full! Drop an item first.`;
+          engineRef.current?.damageNumbers?.push?.({
+            x: engineRef.current?.px || 0,
+            y: (engineRef.current?.py || 0) - 30,
+            text: msg,
+            color: '#ff6644',
+            life: 2.0,
+          });
+          return prev;
+        }
+      }
+
+      // Remove new item from inventory (it's being equipped)
+      const newInventory = prev.inventory.filter(i => i.id !== item.id);
+
+      // Add old item back to inventory if one exists
+      if (oldItem) {
         newInventory.push(oldItem);
       }
+
+      // Equip the new item
       newEquipped[slot] = item;
 
       // Recalc equipStats

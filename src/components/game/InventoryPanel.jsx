@@ -247,7 +247,7 @@ export default function InventoryPanel({ gameState, onClose, onEquip, onUnequip,
             <div className="col-span-3">
 
               <div className="font-cinzel text-xs mb-3" style={{ color: '#6a5a3a' }}>
-                BACKPACK ({bagItems.length} items)
+                BACKPACK ({bagItems.length} items) · Gear slots: {Object.values(equipped).filter(Boolean).length}/11
               </div>
               <div
                 className="grid grid-cols-5 gap-2 p-4 rounded-lg min-h-64"
