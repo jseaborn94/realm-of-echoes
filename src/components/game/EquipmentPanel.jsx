@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { RARITY_COLORS } from '../../game/constants.js';
 import { motion } from 'framer-motion';
+import { canEquipIntoSlot, normalizeItem } from '../../game/ItemSystem.js';
 
 const SLOT_ICONS = {
   weapon: '⚔️', offhand: '🛡️', helmet: '⛑️', chest: '🧥',
@@ -49,13 +50,6 @@ function ItemTooltip({ item, isOffClass }) {
   );
 }
 
-function isValidSlot(itemSlot, targetSlot) {
-  // Handle ring slots — items with slot 'ring' can go into ring1 or ring2
-  if (itemSlot === 'ring' && (targetSlot === 'ring1' || targetSlot === 'ring2')) return true;
-  // Exact match for all other slots
-  return itemSlot === targetSlot;
-}
-
 function EquipmentSlot({ slotKey, item, onDrop, onUnequip, classId }) {
   const [showTip, setShowTip] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -65,7 +59,8 @@ function EquipmentSlot({ slotKey, item, onDrop, onUnequip, classId }) {
     e.preventDefault();
     try {
       const itemData = JSON.parse(e.dataTransfer.getData('application/json'));
-      const isValid = isValidSlot(itemData.slot, slotKey);
+      const normalized = normalizeItem(itemData);
+      const isValid = canEquipIntoSlot(normalized, slotKey);
       setDragOver(true);
       setIsValidDrag(isValid);
     } catch {
@@ -80,7 +75,8 @@ function EquipmentSlot({ slotKey, item, onDrop, onUnequip, classId }) {
     setIsValidDrag(false);
     try {
       const itemData = JSON.parse(e.dataTransfer.getData('application/json'));
-      if (isValidSlot(itemData.slot, slotKey)) {
+      const normalized = normalizeItem(itemData);
+      if (canEquipIntoSlot(normalized, slotKey)) {
         onDrop(itemData, slotKey);
       }
     } catch (err) {

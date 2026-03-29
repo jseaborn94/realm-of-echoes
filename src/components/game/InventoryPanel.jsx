@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { RARITY_COLORS } from '../../game/constants.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import EquipmentPanel from './EquipmentPanel.jsx';
+import { isDraggable, meetsClassRestriction, normalizeItem } from '../../game/ItemSystem.js';
 
 const SLOT_ICONS = {
   helmet: '⛑️', chest: '🧥', pants: '👖', gloves: '🧤', boots: '👢',
@@ -125,26 +126,30 @@ function InvItem({ item, onEquip, onUse, classId }) {
     );
   }
 
+  const canDrag = isDraggable(item);
+  const classMatch = meetsClassRestriction(item, classId);
+  const shouldDisable = !canDrag || !classMatch;
+
   return (
     <motion.div
       className="relative inv-slot has-item rounded-lg flex items-center justify-center w-14 h-14"
-      draggable={!offClass}
+      draggable={canDrag && classMatch}
       onDragStart={e => {
-        if (offClass) { e.preventDefault(); return; }
+        if (shouldDisable) { e.preventDefault(); return; }
         setIsDragging(true);
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('application/json', JSON.stringify(item));
       }}
       onDragEnd={() => setIsDragging(false)}
-      onDoubleClick={() => !offClass && onEquip(item)}
+      onDoubleClick={() => canDrag && classMatch && onEquip(item)}
       onMouseEnter={() => setShowTip(true)}
       onMouseLeave={() => setShowTip(false)}
       animate={{ opacity: isDragging ? 0.5 : 1, scale: isDragging ? 0.9 : 1 }}
       transition={{ duration: 0.1 }}
       style={{
-        borderColor: offClass ? '#ff444440' : RARITY_COLORS[item.rarity] + '60',
-        cursor: offClass ? 'not-allowed' : 'grab',
-        opacity: offClass ? 0.6 : 1,
+        borderColor: shouldDisable ? '#ff444440' : RARITY_COLORS[item.rarity] + '60',
+        cursor: shouldDisable ? 'not-allowed' : 'grab',
+        opacity: shouldDisable ? 0.6 : 1,
       }}
     >
       <span style={{ fontSize: '22px' }}>{item.icon}</span>
