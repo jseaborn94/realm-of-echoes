@@ -3,12 +3,8 @@ import { RARITY_COLORS } from '../../game/constants.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import EquipmentPanel from './EquipmentPanel.jsx';
 import ItemTooltip from './ItemTooltip.jsx';
+import IconRenderer from './IconRenderer.jsx';
 import { isDraggable, meetsClassRestriction, normalizeItem } from '../../game/ItemSystem.js';
-
-const SLOT_ICONS = {
-  helmet: '⛑️', chest: '🧥', pants: '👖', gloves: '🧤', boots: '👢',
-  weapon: '⚔️', shield: '🛡️', ring1: '💍', ring2: '💍', amulet: '📿'
-};
 
 
 
@@ -41,7 +37,7 @@ function EquipSlot({ slot, item, onDrop, onUnequip, isWarrior, classId }) {
     >
       {item ? (
         <>
-          <span style={{ fontSize: '22px' }}>{item.icon}</span>
+          <IconRenderer item={item} size={36} />
           {showTip && <ItemTooltip item={item} position="top" />}
           <div className="absolute bottom-0 right-0 left-0 text-center"
             style={{ fontSize: '7px', color: RARITY_COLORS[item.rarity], background: 'rgba(0,0,0,0.6)', borderRadius: '0 0 6px 6px' }}>
@@ -50,7 +46,7 @@ function EquipSlot({ slot, item, onDrop, onUnequip, isWarrior, classId }) {
         </>
       ) : (
         <div className="flex flex-col items-center gap-0.5 opacity-30">
-          <span style={{ fontSize: '16px' }}>{SLOT_ICONS[slot]}</span>
+          <IconRenderer item={{ slot }} size={20} />
           <span className="font-cinzel capitalize" style={{ fontSize: '7px', color: '#5a4a2a' }}>{slot}</span>
         </div>
       )}
@@ -83,7 +79,7 @@ function InvItem({ item, onEquip, onUse, classId }) {
         onDoubleClick={() => isConsumable && onUse && onUse(item)}
         title={isConsumable ? 'Double-click to use' : item.name}
       >
-        <span style={{ fontSize: '20px' }}>{item.icon}</span>
+        <IconRenderer item={item} size={32} />
         {/* Stack count */}
         <div className="absolute top-0.5 right-1 font-cinzel font-bold"
           style={{ fontSize: '9px', color: '#ffe88a', textShadow: '0 1px 2px black' }}>
@@ -134,7 +130,7 @@ function InvItem({ item, onEquip, onUse, classId }) {
         opacity: shouldDisable ? 0.6 : 1,
       }}
     >
-      <span style={{ fontSize: '22px' }}>{item.icon}</span>
+      <IconRenderer item={item} size={36} />
       {showTip && <ItemTooltip item={item} position="top" />}
       <div className="absolute bottom-0 right-0 left-0 text-center"
         style={{ fontSize: '7px', color: offClass ? '#ff6644' : RARITY_COLORS[item.rarity], background: 'rgba(0,0,0,0.6)', borderRadius: '0 0 6px 6px' }}>

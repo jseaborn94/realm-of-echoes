@@ -4,12 +4,7 @@ import { motion } from 'framer-motion';
 import { canEquipIntoSlot, normalizeItem } from '../../game/ItemSystem.js';
 import { calculatePlayerStats, getEquipmentBonuses, STAT_DISPLAY_INFO, formatStatValue } from '../../game/StatsCalculator.js';
 import ItemTooltip from './ItemTooltip.jsx';
-
-const SLOT_ICONS = {
-  weapon: '⚔️', offhand: '🛡️', helmet: '⛑️', chest: '🧥',
-  gloves: '🧤', boots: '👢', ring1: '💍', ring2: '💍',
-  amulet: '📿', belt: '🪡', cape: '🧛'
-};
+import IconRenderer from './IconRenderer.jsx';
 
 const SLOT_POSITIONS = {
   weapon:  { top: '45%', left: '5%' },
@@ -88,7 +83,7 @@ function EquipmentSlot({ slotKey, item, onDrop, onUnequip, classId }) {
       >
         {item ? (
           <>
-            <span style={{ fontSize: '28px' }}>{item.icon}</span>
+            <IconRenderer item={item} size={44} />
             {showTip && <ItemTooltip item={item} position="right" />}
             <div className="absolute bottom-1 right-1 left-1 text-center"
               style={{ fontSize: '6px', color: RARITY_COLORS[item.rarity], textTransform: 'uppercase', fontWeight: 'bold' }}>
@@ -97,7 +92,7 @@ function EquipmentSlot({ slotKey, item, onDrop, onUnequip, classId }) {
           </>
         ) : (
           <div className="flex flex-col items-center gap-1 opacity-40">
-            <span style={{ fontSize: '24px' }}>{SLOT_ICONS[slotKey]}</span>
+            <IconRenderer item={{ slot: slotKey }} size={28} />
           </div>
         )}
       </motion.div>
