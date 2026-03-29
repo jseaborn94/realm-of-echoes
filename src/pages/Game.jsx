@@ -14,8 +14,10 @@ import LootNotification from '@/components/game/LootNotification.jsx';
 import CraftingPanel from '@/components/game/CraftingPanel.jsx';
 import WorldMap from '@/components/game/WorldMap.jsx';
 import GMPanel from '@/components/game/GMPanel.jsx';
+import SkillHotbar from '@/components/game/SkillHotbar.jsx';
 import { getNPCRole, consumeInputs as craftConsume } from '@/game/CraftingRecipes.js';
 import { addResourcesToInventory } from '@/game/GatheringSystem.js';
+import { getSkillsByClass } from '@/game/SkillSystem.js';
 
 const initialGameState = (classId, playerName) => {
   const classData = CLASSES[classId];
@@ -224,6 +226,18 @@ export default function Game() {
       if (e.key === 'k' || e.key === 'K') setShowSkills(v => !v);
       if (e.key === 'm' || e.key === 'M') setShowWorldMap(v => !v);
 
+      // Skill hotbar keybinds: 1, 2, 3, 4
+      if (['1', '2', '3', '4'].includes(e.key)) {
+        const slotIndex = parseInt(e.key) - 1;
+        const classId = gameState?.classData?.id || 'warrior';
+        const skills = getSkillsByClass(classId);
+        const skill = skills[slotIndex];
+        if (skill && engineRef.current) {
+          engineRef.current._beginSkill(skill.key);
+        }
+        return;
+      }
+
       // Dialogue / crafting advance with F
       if (e.key === 'f' || e.key === 'F') {
         if (gameState?.dialogueNPC) {
@@ -400,6 +414,9 @@ export default function Game() {
         />
       )}
 
+      {/* Skill Hotbar */}
+      {gameState && <SkillHotbar gameState={gameState} gameEngine={engineRef.current} />}
+
       {/* Pause menu button */}
       <button
         onClick={() => setShowPauseMenu(true)}
@@ -483,11 +500,10 @@ export default function Game() {
       )}
 
       {/* Controls hint */}
-      <div className="fixed bottom-20 left-3 z-30 text-xs font-cinzel space-y-0.5"
+      <div className="fixed bottom-32 left-3 z-30 text-xs font-cinzel space-y-0.5"
         style={{ color: '#2a1a0a' }}>
-        <div>Click — Move</div>
-        <div>QWER — Aim &amp; Cast · Click — Confirm</div>
-        <div>1 — HP Potion · 2 — MP Potion</div>
+        <div>Click — Move / Attack</div>
+        <div>1-4 — Cast Skill</div>
         <div>F — Interact · I — Inv · K — Skills · M — Map</div>
       </div>
     </div>
