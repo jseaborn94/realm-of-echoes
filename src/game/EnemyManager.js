@@ -753,16 +753,18 @@ export class EnemyManager {
       ctx.fill();
     }
 
-    // Draw enemy sprite from registry (async, but don't await in draw loop)
+    // Draw enemy sprite from registry (synchronous - must be preloaded)
     const enemyType = e.type || 'goblin';
     const action = e.moving ? 'run' : e.attacking ? 'attack' : 'idle';
-    assetIntegration.drawEnemySprite(ctx, enemyType, sx, sy, action, e.facingLeft ? -1 : 1).catch(() => {
-      // Fallback: draw circle placeholder
+    const spriteDrawn = assetIntegration.drawEnemySpriteSync(ctx, enemyType, sx, sy, action, e.facingLeft ? -1 : 1);
+    
+    // Fallback: draw circle placeholder if sprite not loaded
+    if (!spriteDrawn) {
       ctx.fillStyle = e.hitFlash > 0 ? '#ffffff' : e.color;
       ctx.beginPath();
       ctx.arc(sx, sy, r, 0, Math.PI * 2);
       ctx.fill();
-    });
+    }
 
     const borderColor = isBoss ? '#ff9800' : isMiniboss ? '#e040fb' : isElite ? '#ffd700' : 'rgba(0,0,0,0.4)';
     ctx.strokeStyle = borderColor;

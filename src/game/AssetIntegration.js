@@ -15,6 +15,7 @@ export class AssetIntegration {
     this.imageCache = new Map(); // url -> Image
     this.loadingPromises = new Map(); // url -> Promise
     this.unmappedAssets = new Set(); // Track what needs better mapping
+    this._loggedMissing = new Set(); // Track logged missing assets to avoid spam
   }
 
   /**
@@ -293,6 +294,91 @@ export class AssetIntegration {
   }
 
   /**
+   * SYNCHRONOUS DRAW METHODS (for use in render loop after preload)
+   */
+
+  /**
+   * Draw player sprite synchronously (must be preloaded first)
+   */
+  drawPlayerSpriteSync(ctx, classId, screenX, screenY, color = 'blue', action = 'idle') {
+    const { getPlayerSprite } = require('./CompleteAssetRegistry.js');
+    const spriteUrl = getPlayerSprite(classId, color);
+    
+    if (!spriteUrl) {
+      if (!this._loggedMissing.has(`player_${classId}_${color}`)) {
+        console.warn(`[Render] No sprite URL for player: class=${classId} color=${color}`);
+        this._loggedMissing.add(`player_${classId}_${color}`);
+      }
+      return false;
+    }
+
+    const img = this.imageCache.get(spriteUrl);
+    if (!img) {
+      if (!this._loggedMissing.has(spriteUrl)) {
+        console.warn(`[Render] Sprite not preloaded: ${spriteUrl}`);
+        this._loggedMissing.add(spriteUrl);
+      }
+      return false;
+    }
+
+    try {
+      const scale = 2;
+      const w = img.width * scale;
+      const h = img.height * scale;
+      ctx.drawImage(img, screenX - w / 2, screenY - h, w, h);
+      return true;
+    } catch (err) {
+      console.error(`[Render] Failed to draw player sprite: ${err.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Draw enemy sprite synchronously (must be preloaded first)
+   */
+  drawEnemySpriteSync(ctx, enemyType, screenX, screenY, action = 'idle', flipX = 1) {
+    const { getEnemySprite } = require('./CompleteAssetRegistry.js');
+    const spriteUrl = getEnemySprite(enemyType, action);
+    
+    if (!spriteUrl) {
+      if (!this._loggedMissing.has(`enemy_${enemyType}`)) {
+        console.warn(`[Render] No sprite URL for enemy: type=${enemyType}`);
+        this._loggedMissing.add(`enemy_${enemyType}`);
+      }
+      return false;
+    }
+
+    const img = this.imageCache.get(spriteUrl);
+    if (!img) {
+      if (!this._loggedMissing.has(spriteUrl)) {
+        console.warn(`[Render] Enemy sprite not preloaded: ${spriteUrl}`);
+        this._loggedMissing.add(spriteUrl);
+      }
+      return false;
+    }
+
+    try {
+      const scale = 2;
+      const w = img.width * scale;
+      const h = img.height * scale;
+
+      ctx.save();
+      if (flipX === -1) {
+        ctx.translate(screenX, screenY - h);
+        ctx.scale(-1, 1);
+        ctx.drawImage(img, 0, 0, w, h);
+      } else {
+        ctx.drawImage(img, screenX - w / 2, screenY - h, w, h);
+      }
+      ctx.restore();
+      return true;
+    } catch (err) {
+      console.error(`[Render] Failed to draw enemy sprite: ${err.message}`);
+      return false;
+    }
+  }
+
+  /**
    * Get reported unmapped assets (for debugging)
    */
   getUnmappedAssets() {
@@ -305,6 +391,7 @@ export class AssetIntegration {
   clearCache() {
     this.imageCache.clear();
     this.loadingPromises.clear();
+    this._loggedMissing.clear();
   }
 }
 

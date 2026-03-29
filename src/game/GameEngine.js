@@ -9,6 +9,7 @@ import { EnemyManager } from './EnemyManager.js';
 import { GatheringSystem, addResourcesToInventory } from './GatheringSystem.js';
 import { TargetingSystem } from './TargetingSystem.js'; // v2
 import { assetIntegration } from './AssetIntegration.js';
+import { AssetPreloader } from './AssetPreloader.js';
 import { equipmentRenderer } from './EquipmentRenderer.js';
 import { skillFX } from './SkillFX.js';
 import { getSkillByKey, calculateSkillDamage, canCastSkill } from './SkillSystem.js';
@@ -367,7 +368,7 @@ export class GameEngine {
     this.lastTime = now;
 
     this._update(dt);
-    this._draw().catch(err => console.error('[RENDER] Draw error:', err));
+    this._draw(); // Synchronous - no await needed
 
     this.animFrame = requestAnimationFrame(() => this._loop());
   }
@@ -856,7 +857,7 @@ export class GameEngine {
     }
   }
 
-  async _draw() {
+  _draw() {
     const ctx = this.ctx;
     const W = this.canvas.width;
     const H = this.canvas.height;
@@ -878,7 +879,7 @@ export class GameEngine {
     this._drawObjects(ctx, wcamX, wcamY);
 
     // Draw NPCs (pass player screen pos for fog visibility check)
-    await this._drawNPCs(ctx, wcamX, wcamY, W / z / 2, H / z / 2);
+    this._drawNPCs(ctx, wcamX, wcamY, W / z / 2, H / z / 2);
 
     // Draw enemies (ctx is already scaled by z, pass world-space cam + player screen pos for fog check)
     this.enemyManager.draw(ctx, wcamX, wcamY, W / z / 2, H / z / 2, FOG_RADIUS / this.zoom);
@@ -899,7 +900,7 @@ export class GameEngine {
     }
 
     // Draw player (always screen-center in world-space)
-    await this._drawPlayer(ctx, W / z, H / z, wcamX, wcamY);
+    this._drawPlayer(ctx, W / z, H / z, wcamX, wcamY);
 
     // Draw self-aoe preview around player (also world-space)
     if (this.targeting.active && this.targeting.config?.type === 'self_aoe') {
@@ -1030,7 +1031,7 @@ export class GameEngine {
     }
   }
 
-  async _drawNPCs(ctx, wcamX, wcamY, playerSX, playerSY) {
+  _drawNPCs(ctx, wcamX, wcamY, playerSX, playerSY) {
     const fogRadiusWorld = FOG_RADIUS / this.zoom;
     for (const npc of this.world.npcs) {
       const sx = npc.col * TILE_SIZE - wcamX + TILE_SIZE / 2;
@@ -1039,13 +1040,13 @@ export class GameEngine {
       const distFromPlayer = Math.sqrt((sx - playerSX) ** 2 + (sy - playerSY) ** 2);
       const visAlpha = Math.max(0, Math.min(1, 1 - (distFromPlayer - fogRadiusWorld * 0.7) / (fogRadiusWorld * 0.3)));
 
-      // Draw NPC as sprite
+      // Draw NPC sprite synchronously (must be preloaded)
       const npcClass = npc.role === 'merchant' ? 'archer' : 'warrior';
       const npcColor = npc.color || 'black';
-      try {
-        await assetIntegration.drawPlayerSprite(ctx, npcClass, sx, sy, npcColor, 'idle');
-      } catch (err) {
-        // Fallback: simple humanoid placeholder
+      const spriteDrawn = assetIntegration.drawPlayerSpriteSync(ctx, npcClass, sx, sy, npcColor, 'idle');
+      
+      // Fallback: simple humanoid placeholder if sprite not loaded
+      if (!spriteDrawn) {
         ctx.fillStyle = '#c8a060';
         ctx.beginPath();
         ctx.arc(sx, sy - 4, 8, 0, Math.PI * 2);
@@ -1067,7 +1068,7 @@ export class GameEngine {
     }
   }
 
-  async _drawPlayer(ctx, W, H, wcamX, wcamY) {
+  _drawPlayer(ctx, W, H, wcamX, wcamY) {
     const gs = this.gameState;
     const px = W / 2;
     const py = H / 2;
@@ -1093,33 +1094,32 @@ export class GameEngine {
     const facingAngle = this.facingAngle; // Already in radians from movement
 
     // ─── Layered draw order ───────────────────────────────────────────
-    // 1. Back accessories (capes, etc.)
+    // 1. Back accessories (capes, etc.) - synchronous (equipment renderer handles its own drawing)
     try {
-      await equipmentRenderer.drawEquipmentLayer(ctx, px, py, gs.equipped, classId, animState, 'back', facingAngle);
+      equipmentRenderer.drawEquipmentLayer(ctx, px, py, gs.equipped, classId, animState, 'back', facingAngle);
     } catch (err) {}
 
-    // 2. Base character sprite
-    try {
-      await assetIntegration.drawPlayerSprite(ctx, classId, px, py, color, animState);
-    } catch (err) {
-      console.warn('[RENDER] Player sprite failed, using fallback');
+    // 2. Base character sprite - synchronous
+    const spriteDrawn = assetIntegration.drawPlayerSpriteSync(ctx, classId, px, py, color, animState);
+    if (!spriteDrawn) {
+      // Fallback: simple rectangle placeholder
       ctx.fillStyle = gs.classData?.color || '#888';
       ctx.fillRect(px - 10, py - 20, 20, 28);
     }
 
-    // 3. Chest armor
+    // 3. Chest armor - synchronous
     try {
-      await equipmentRenderer.drawEquipmentLayer(ctx, px, py, gs.equipped, classId, animState, 'chest', facingAngle);
+      equipmentRenderer.drawEquipmentLayer(ctx, px, py, gs.equipped, classId, animState, 'chest', facingAngle);
     } catch (err) {}
 
-    // 4. Helmet
+    // 4. Helmet - synchronous
     try {
-      await equipmentRenderer.drawEquipmentLayer(ctx, px, py, gs.equipped, classId, animState, 'helmet', facingAngle);
+      equipmentRenderer.drawEquipmentLayer(ctx, px, py, gs.equipped, classId, animState, 'helmet', facingAngle);
     } catch (err) {}
 
-    // 5. Held weapon / front accessories (drawn on top for readability)
+    // 5. Held weapon / front accessories (drawn on top for readability) - synchronous
     try {
-      await equipmentRenderer.drawEquipmentLayer(ctx, px, py, gs.equipped, classId, animState, 'weapon', facingAngle);
+      equipmentRenderer.drawEquipmentLayer(ctx, px, py, gs.equipped, classId, animState, 'weapon', facingAngle);
     } catch (err) {}
 
     // Nameplate

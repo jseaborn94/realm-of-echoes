@@ -4,6 +4,8 @@ import { saveCharacter, loadCharacter } from '@/game/CharacterManager.js';
 import { calculatePlayerStats } from '@/game/StatsCalculator.js';
 import { base44 } from '@/api/base44Client';
 import { GameEngine } from '@/game/GameEngine.js';
+import { AssetPreloader } from '@/game/AssetPreloader.js';
+import { assetIntegration } from '@/game/AssetIntegration.js';
 import ClassSelect from '@/components/game/ClassSelect.jsx';
 import PauseMenu from '@/components/game/PauseMenu.jsx';
 import HUD from '@/components/game/HUD.jsx';
@@ -204,24 +206,39 @@ export default function Game() {
   useEffect(() => {
     if (!gameStarted || !canvasRef.current || !gameState) return;
 
-    // Give canvas time to render
-    const timer = setTimeout(() => {
-      const engine = new GameEngine(canvasRef.current, gameState, handleStateUpdate);
-      engineRef.current = engine;
-      engine.start();
-
-      const handleResize = () => {
-        if (canvasRef.current) {
-          canvasRef.current.width = window.innerWidth;
-          canvasRef.current.height = window.innerHeight;
+    // Give canvas time to render, then preload assets before starting engine
+    const timer = setTimeout(async () => {
+      try {
+        console.log('[Game] Starting asset preload...');
+        const preloader = new AssetPreloader(assetIntegration);
+        const preloadResult = await preloader.preloadAll();
+        
+        if (!preloadResult.success) {
+          console.warn(`[Game] Preload complete with ${preloadResult.failed} failures`);
+        } else {
+          console.log('[Game] All assets preloaded successfully');
         }
-      };
-      window.addEventListener('resize', handleResize);
 
-      return () => {
-        engine.stop();
-        window.removeEventListener('resize', handleResize);
-      };
+        // Now start the game engine with preloaded assets
+        const engine = new GameEngine(canvasRef.current, gameState, handleStateUpdate);
+        engineRef.current = engine;
+        engine.start();
+
+        const handleResize = () => {
+          if (canvasRef.current) {
+            canvasRef.current.width = window.innerWidth;
+            canvasRef.current.height = window.innerHeight;
+          }
+        };
+        window.addEventListener('resize', handleResize);
+
+        return () => {
+          engine.stop();
+          window.removeEventListener('resize', handleResize);
+        };
+      } catch (err) {
+        console.error('[Game] Failed to start: ', err);
+      }
     }, 100);
 
     return () => clearTimeout(timer);
