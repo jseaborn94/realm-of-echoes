@@ -70,6 +70,10 @@ export class GameEngine {
     this.targeting = new TargetingSystem();
     this._mouseScreen = { x: 0, y: 0 }; // raw screen position
 
+    // Animation state tracking
+    this.attackAnimationTimer = 0; // Duration of attack visual state
+    this.ATTACK_ANIM_DURATION = 0.15; // seconds
+
     this._bindKeys();
     this._resize();
   }
@@ -334,6 +338,11 @@ export class GameEngine {
       this.zoneLabel = { name: zone.name, timer: 3.0 };
     }
 
+    // Attack animation state (for gear positioning)
+    if (this.attackAnimationTimer > 0) {
+      this.attackAnimationTimer -= dt;
+    }
+
     // Cooldowns
     Object.keys(this.cooldowns).forEach(k => {
       if (this.cooldowns[k] > 0) this.cooldowns[k] = Math.max(0, this.cooldowns[k] - dt * 1000);
@@ -543,6 +552,7 @@ export class GameEngine {
         console.log(`[PLAYER_ATTACK] vs ${e.name}: ${dmg} dmg | ${hpBefore.toFixed(1)} → ${e.hp.toFixed(1)} | Dead: ${e.hp <= 0}`);
         this.damageNumbers.push({ x: e.x + (Math.random() - 0.5) * 20, y: e.y - 20, text: `-${dmg}`, color: '#ffffff', life: 1.0 });
         this.effects.push({ x: e.x, y: e.y, radius: 16, life: 0.25, maxLife: 0.25, color: gs.classData?.color || '#ffffff' });
+        this.attackAnimationTimer = this.ATTACK_ANIM_DURATION; // Trigger attack gear animation
         if (e.hp <= 0) {
           e.dead = true;
           e.deathTimer = 0.6; // fade-out timer
@@ -625,6 +635,7 @@ export class GameEngine {
     // Consume MP and cooldown only after successful execution
     gs.mp -= cost;
     this.cooldowns[key] = this.skillCooldownMax[key];
+    this.attackAnimationTimer = this.ATTACK_ANIM_DURATION; // Trigger attack gear animation
     this.onStateUpdate({ ...gs });
   }
 
@@ -1031,7 +1042,13 @@ export class GameEngine {
     // Get animation state and facing direction
     const classId = gs.classData?.id || 'warrior';
     const color = gs.classData?.spriteColor || 'blue';
-    const animState = this.destination ? 'move' : 'idle';
+    // Determine animation state: attack takes priority, then movement, else idle
+    let animState = 'idle';
+    if (this.attackAnimationTimer > 0) {
+      animState = 'attack';
+    } else if (this.destination) {
+      animState = 'move';
+    }
     const facingAngle = this.facingAngle; // Already in radians from movement
 
     // ─── Layered draw order ───────────────────────────────────────────
