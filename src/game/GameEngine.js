@@ -470,7 +470,7 @@ export class GameEngine {
     });
     
     // Debug logging in dev mode (optional)
-    if (gameState?._debugEffects && this.effects.length > 0) {
+    if (gs?._debugEffects && this.effects.length > 0) {
       console.log(`[DEBUG] Active effects: ${this.effects.length}`);
     }
 
