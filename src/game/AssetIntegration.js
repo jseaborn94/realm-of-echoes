@@ -238,26 +238,21 @@ export class AssetIntegration {
    * Maps: classId → registry category, animState → idle/move/attack
    */
   drawPlayerSpriteSync(ctx, classId, screenX, screenY, color = 'blue', animState = 'idle') {
-    // Normalize class ID
     const normalizedClass = (classId || 'warrior').toLowerCase();
-
-    // Map animation state: use idle if unrecognized
     const validStates = ['idle', 'move', 'attack'];
     const mappedState = validStates.includes(animState) ? animState : 'idle';
-    
-    // New flat registry: getPlayerSprite(classId, color, animState)
     const spriteUrl = getPlayerSprite(normalizedClass, color, mappedState);
-    
+
     if (!spriteUrl) {
       if (!this._loggedMissing.has(`player_${normalizedClass}_${color}_${mappedState}`)) {
-        console.warn(`[Render] Player sprite missing from registry: class=${normalizedClass} color=${color} state=${mappedState}`);
+        console.warn(`[Render] Player sprite missing: class=${normalizedClass} state=${mappedState}`);
         this._loggedMissing.add(`player_${normalizedClass}_${color}_${mappedState}`);
       }
       return false;
     }
 
-    const img = this.imageCache.get(spriteUrl);
-    if (!img) {
+    const img = this.imageCache.get(spriteUrl) || this.imageCache.get(encodeURI(spriteUrl));
+    if (!img || !img.complete || img.naturalWidth === 0) {
       if (!this._loggedMissing.has(spriteUrl)) {
         console.warn(`[Render] Sprite not preloaded: ${spriteUrl}`);
         this._loggedMissing.add(spriteUrl);
@@ -266,9 +261,11 @@ export class AssetIntegration {
     }
 
     try {
-      const scale = 2;
-      const w = img.width * scale;
-      const h = img.height * scale;
+      // Target height: 52px in world-space (visible at zoom 1.6 → ~83px on screen)
+      const TARGET_H = 52;
+      const aspect = img.naturalWidth / img.naturalHeight;
+      const h = TARGET_H;
+      const w = h * aspect;
       ctx.drawImage(img, screenX - w / 2, screenY - h, w, h);
       return true;
     } catch (err) {
@@ -281,41 +278,38 @@ export class AssetIntegration {
    * Draw enemy sprite synchronously (must be preloaded first)
    * Maps: enemyType → registry, animState → idle/run/attack/death
    */
-  drawEnemySpriteSync(ctx, enemyType, screenX, screenY, animState = 'idle', flipX = 1) {
-    // Normalize type — new registry keys: bear, gnoll, spider, snake, skull, lancer
+  drawEnemySpriteSync(ctx, enemyType, screenX, screenY, animState = 'idle', flipX = 1, targetH = 48) {
     const normalizedType = (enemyType || 'bear').toLowerCase();
-    
-    // Map animation state
     const validStates = ['idle', 'run', 'attack', 'death'];
     const mappedState = validStates.includes(animState) ? animState : 'idle';
-    
     const spriteUrl = getEnemySprite(normalizedType, mappedState);
-    
+
     if (!spriteUrl) {
       if (!this._loggedMissing.has(`enemy_${normalizedType}_${mappedState}`)) {
-        console.warn(`[Render] Enemy sprite missing from registry: type=${normalizedType} state=${mappedState}`);
+        console.warn(`[Render] Enemy sprite missing: type=${normalizedType} state=${mappedState}`);
         this._loggedMissing.add(`enemy_${normalizedType}_${mappedState}`);
       }
       return false;
     }
 
-    const img = this.imageCache.get(spriteUrl);
-    if (!img) {
+    const img = this.imageCache.get(spriteUrl) || this.imageCache.get(encodeURI(spriteUrl));
+    if (!img || !img.complete || img.naturalWidth === 0) {
       if (!this._loggedMissing.has(spriteUrl)) {
-        console.warn(`[Render] Sprite not preloaded: ${spriteUrl}`);
+        console.warn(`[Render] Enemy sprite not preloaded: ${spriteUrl}`);
         this._loggedMissing.add(spriteUrl);
       }
       return false;
     }
 
     try {
-      const scale = 2;
-      const w = img.width * scale;
-      const h = img.height * scale;
+      const TARGET_H = targetH || 48;
+      const aspect = img.naturalWidth / img.naturalHeight;
+      const h = TARGET_H;
+      const w = h * aspect;
 
       ctx.save();
       if (flipX === -1) {
-        ctx.translate(screenX, screenY - h);
+        ctx.translate(screenX + w / 2, screenY - h);
         ctx.scale(-1, 1);
         ctx.drawImage(img, 0, 0, w, h);
       } else {
@@ -325,6 +319,63 @@ export class AssetIntegration {
       return true;
     } catch (err) {
       console.error(`[Render] Failed to draw enemy sprite: ${err.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Draw projectile sprite synchronously from preloaded cache.
+   * Returns true if drawn, false if not cached yet.
+   */
+  drawProjectileSync(ctx, screenX, screenY, angle = 0, projectileType = 'arrow') {
+    const spriteUrl = getProjectileSprite(projectileType);
+    if (!spriteUrl) return false;
+
+    const img = this.imageCache.get(spriteUrl) || this.imageCache.get(encodeURI(spriteUrl));
+    if (!img || !img.complete || img.naturalWidth === 0) return false;
+
+    try {
+      ctx.save();
+      ctx.translate(screenX, screenY);
+      ctx.rotate(angle);
+      // Arrow: fixed 20px wide, aspect-correct height
+      const TARGET_W = 20;
+      const aspect = img.naturalHeight / img.naturalWidth;
+      const w = TARGET_W;
+      const h = w * aspect;
+      ctx.drawImage(img, -w / 2, -h / 2, w, h);
+      ctx.restore();
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  /**
+   * Draw NPC avatar synchronously — crops first frame if sheet detected.
+   * Avatars_01.png is treated as a sprite sheet (multiple columns).
+   */
+  drawNPCSpriteSync(ctx, screenX, screenY) {
+    const url = NPC_SPRITES.default;
+    const img = this.imageCache.get(url) || this.imageCache.get(encodeURI(url));
+    if (!img || !img.complete || img.naturalWidth === 0) return false;
+
+    try {
+      // Avatars_01.png: if width >> height, treat as horizontal sheet, crop first frame
+      const frameW = img.naturalHeight; // assume square frames
+      const frameH = img.naturalHeight;
+      const TARGET_H = 52;
+      const scale = TARGET_H / frameH;
+      const dw = frameW * scale;
+      const dh = frameH * scale;
+
+      ctx.drawImage(img,
+        0, 0, frameW, frameH,           // source: first frame
+        screenX - dw / 2, screenY - dh, // dest: centered, feet at screenY
+        dw, dh
+      );
+      return true;
+    } catch (err) {
       return false;
     }
   }

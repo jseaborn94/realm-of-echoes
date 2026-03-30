@@ -691,22 +691,22 @@ export class EnemyManager {
       if (!e.projectiles) continue;
       for (const p of e.projectiles) {
         const sx = p.x - camX, sy = p.y - camY;
-        // Draw projectile with type-specific sprite and rotation
+        // Draw projectile synchronously from preloaded cache
         const angle = p.angle || Math.atan2(p.vy || 0, p.vx || 1);
-        const projType = p.type || 'magic';
-        assetIntegration.drawProjectile(ctx, sx, sy, angle, projType).catch(() => {
-          // Fallback: colored glow circle matching projectile type
+        const projType = p.type || 'arrow';
+        const projDrawn = assetIntegration.drawProjectileSync(ctx, sx, sy, angle, projType);
+        if (!projDrawn) {
+          // Fallback: colored dot
           ctx.save();
-          const colorMap = { arrow: '#d4a574', magic: '#9c27b0', flame: '#ff6b00', ice: '#4fc3f7', spark: '#ffeb3b', dark: '#424242', default: '#888' };
-          const glowColor = colorMap[projType] || colorMap.magic;
-          ctx.fillStyle = glowColor;
-          ctx.shadowColor = glowColor;
-          ctx.shadowBlur = 10;
+          const colorMap = { arrow: '#d4a574', magic: '#9c27b0', default: '#d4a574' };
+          ctx.fillStyle = p.color || colorMap[projType] || colorMap.default;
+          ctx.shadowColor = ctx.fillStyle;
+          ctx.shadowBlur = 8;
           ctx.beginPath();
-          ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+          ctx.arc(sx, sy, 4, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
-        });
+        }
       }
     }
   }
@@ -754,29 +754,29 @@ export class EnemyManager {
     }
 
     // Draw enemy sprite from registry (synchronous - must be preloaded)
-    const enemyType = (e.type || 'goblin').toLowerCase();
-    // Determine animation state based on combat status
+    const enemyType = (e.type || 'bear').toLowerCase();
+    // Determine animation state
     let animState = 'idle';
     if (e.dead || e.deathTimer !== null) animState = 'death';
-    else if (e.state === 'charge') animState = 'attack';
-    else if (e.state === 'chase' && dist < e.alertRadius * 1.2) animState = 'run';
+    else if (e.state === 'charge' || e.state === 'attack') animState = 'attack';
     else if (e.state === 'chase') animState = 'run';
-    else if (e.state === 'attack') animState = 'attack';
-    
-    const spriteDrawn = assetIntegration.drawEnemySpriteSync(ctx, enemyType, sx, sy, animState, e.facingLeft ? -1 : 1);
-    
-    // Fallback: draw circle placeholder if sprite not loaded
+
+    // Scale sprite target height by tier
+    const spriteH = isBoss ? 80 : isMiniboss ? 64 : isElite ? 56 : 48;
+    const spriteDrawn = assetIntegration.drawEnemySpriteSync(ctx, enemyType, sx, sy + r, animState, e.facingLeft ? -1 : 1, spriteH);
+
+    // Fallback: circle placeholder if sprite not cached
     if (!spriteDrawn) {
       ctx.fillStyle = e.hitFlash > 0 ? '#ffffff' : e.color;
       ctx.beginPath();
       ctx.arc(sx, sy, r, 0, Math.PI * 2);
       ctx.fill();
+      // Border only on fallback circle
+      const borderColor = isBoss ? '#ff9800' : isMiniboss ? '#e040fb' : isElite ? '#ffd700' : 'rgba(0,0,0,0.4)';
+      ctx.strokeStyle = borderColor;
+      ctx.lineWidth = isBoss ? 4 : isMiniboss ? 3 : isElite ? 2 : 1;
+      ctx.stroke();
     }
-
-    const borderColor = isBoss ? '#ff9800' : isMiniboss ? '#e040fb' : isElite ? '#ffd700' : 'rgba(0,0,0,0.4)';
-    ctx.strokeStyle = borderColor;
-    ctx.lineWidth = isBoss ? 4 : isMiniboss ? 3 : isElite ? 2 : 1;
-    ctx.stroke();
 
     if (labelAlpha > 0) {
       ctx.save();

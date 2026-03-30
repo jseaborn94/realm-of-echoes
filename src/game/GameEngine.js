@@ -91,8 +91,8 @@ export class GameEngine {
     this.attackAnimationTimer = 0; // Duration of attack visual state
     this.ATTACK_ANIM_DURATION = 0.15; // seconds
 
-    // Debug sprite renderer (test PNGs in live world)
-    this.debugRenderer = new SpriteDebugRenderer(assetIntegration);
+    // Debug sprite renderer — disabled in normal gameplay; set debugSprites=true to re-enable
+    this.debugRenderer = null; // new SpriteDebugRenderer(assetIntegration);
 
     this._bindKeys();
     this._resize();
@@ -1044,14 +1044,10 @@ export class GameEngine {
       const distFromPlayer = Math.sqrt((sx - playerSX) ** 2 + (sy - playerSY) ** 2);
       const visAlpha = Math.max(0, Math.min(1, 1 - (distFromPlayer - fogRadiusWorld * 0.7) / (fogRadiusWorld * 0.3)));
 
-      // Map NPC role to class sprite: merchant→archer, guard/other→warrior
-      const npcClass = npc.role === 'merchant' ? 'archer' : 'warrior';
-      const npcColor = npc.color || 'black';
-      
-      // Draw NPC sprite synchronously (must be preloaded)
-      const spriteDrawn = assetIntegration.drawPlayerSpriteSync(ctx, npcClass, sx, sy, npcColor, 'idle');
-      
-      // Fallback: simple humanoid placeholder if sprite fails
+      // Draw NPC using Avatars_01.png (first frame, properly cropped)
+      const spriteDrawn = assetIntegration.drawNPCSpriteSync(ctx, sx, sy);
+
+      // Fallback: simple humanoid placeholder if sprite not cached yet
       if (!spriteDrawn) {
         ctx.fillStyle = '#c8a060';
         ctx.beginPath();
