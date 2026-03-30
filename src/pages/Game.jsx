@@ -216,14 +216,15 @@ export default function Game() {
         
         console.log(`[Game] Preload result: ${preloadResult.preloaded} loaded, ${preloadResult.failed} failed`);
         
-        // Log cache status for test sprites
+        // Log cache status for the 4 verified test sprites
         const testUrls = [
-          'https://raw.githubusercontent.com/jseaborn94/Realm-of-Echoes-Assets/main/assets/Units/Blue Units/Warrior/Warrior_Idle.png',
-          'https://raw.githubusercontent.com/jseaborn94/Realm-of-Echoes-Assets/main/assets/Units/Black Units/Warrior/Warrior_Idle.png',
-          'https://raw.githubusercontent.com/jseaborn94/Realm-of-Echoes-Assets/main/assets/Enemy Pack/Bear/Bear_Idle.png',
+          'https://raw.githubusercontent.com/jseaborn94/realm-of-echoes/main/Assets/Archer_Idle.png',
+          'https://raw.githubusercontent.com/jseaborn94/realm-of-echoes/main/Assets/Avatars_01.png',
+          'https://raw.githubusercontent.com/jseaborn94/realm-of-echoes/main/Assets/Bear_Idle.png',
+          'https://raw.githubusercontent.com/jseaborn94/realm-of-echoes/main/Assets/Arrow.png',
         ];
         testUrls.forEach(url => {
-          const cached = assetIntegration.imageCache.has(url);
+          const cached = assetIntegration.imageCache.has(url) || assetIntegration.imageCache.has(encodeURI(url));
           console.log(`[Game] Test sprite cached: ${cached ? '✓' : '✗'} ${url.split('/').pop()}`);
         });
         

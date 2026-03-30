@@ -1,9 +1,11 @@
 /**
  * SpriteDebugRenderer.js
  *
- * Forces test sprite rendering at fixed screen positions with full diagnostics.
- * Draws directly in screen space (no camera/zoom transforms).
- * Uses VERIFIED flat-file URLs from /Assets in jseaborn94/realm-of-echoes.
+ * Strict in-game render proof for the 4 verified flat-file assets.
+ * Draw path is fully SYNCHRONOUS — reads preloaded imageCache only.
+ * No async, no fallback circles for the 4 test assets.
+ *
+ * Draws in SCREEN SPACE (after ctx.restore()) so no zoom/camera distortion.
  */
 
 import {
@@ -16,158 +18,187 @@ import {
 export class SpriteDebugRenderer {
   constructor(assetIntegration) {
     this.assetIntegration = assetIntegration;
-    this.testResults = {
-      playerLoaded: false,
-      npcLoaded: false,
-      enemyLoaded: false,
-      projectileLoaded: false,
-      playerDrawn: false,
-      npcDrawn: false,
-      enemyDrawn: false,
-      projectileDrawn: false,
+
+    // Track render results for the report panel
+    this.results = {
+      player:     { url: TEST_PLAYER_URL,     rendered: false },
+      npc:        { url: TEST_NPC_URL,         rendered: false },
+      enemy:      { url: TEST_ENEMY_URL,       rendered: false },
+      projectile: { url: TEST_PROJECTILE_URL, rendered: false },
     };
-    this._frameCount = 0;
-    this._requested = {};
-    this._logged = {};
+
+    // Trigger one async load attempt per asset on construction
+    // so the cache gets populated if not already preloaded
+    this._triggerLoads();
+  }
+
+  _triggerLoads() {
+    for (const key of Object.keys(this.results)) {
+      const url = this.results[key].url;
+      if (!this._isCached(url)) {
+        this.assetIntegration.loadImage(url).then(img => {
+          if (img) console.log(`[SpriteDebug] ✓ loaded ${key}: ${img.naturalWidth}x${img.naturalHeight}`);
+          else     console.error(`[SpriteDebug] ✗ failed to load ${key}: ${url}`);
+        });
+      }
+    }
+  }
+
+  _isCached(url) {
+    return this.assetIntegration.imageCache.has(url)
+        || this.assetIntegration.imageCache.has(encodeURI(url));
+  }
+
+  _getImage(url) {
+    return this.assetIntegration.imageCache.get(url)
+        || this.assetIntegration.imageCache.get(encodeURI(url))
+        || null;
   }
 
   /**
-   * MAIN METHOD: Draw all test sprites in screen space (fixed positions, no camera)
-   * Called AFTER ctx.restore() so no zoom transform is active
+   * Main entry point — called each frame in screen space (after ctx.restore)
    */
-  drawTestSpritesCentered(ctx, screenWidth, screenHeight) {
+  drawTestSpritesCentered(ctx, W, H) {
     if (!ctx) return;
-
-    this._frameCount++;
-    if (this._frameCount === 1 || this._frameCount % 120 === 0) {
-      console.log(`[DEBUG RENDER] frame=${this._frameCount} cacheSize=${this.assetIntegration.imageCache.size}`);
-      console.log(`[DEBUG RENDER] Player URL: ${TEST_PLAYER_URL}`);
-      console.log(`[DEBUG RENDER] NPC URL: ${TEST_NPC_URL}`);
-      console.log(`[DEBUG RENDER] Enemy URL: ${TEST_ENEMY_URL}`);
-      console.log(`[DEBUG RENDER] Projectile URL: ${TEST_PROJECTILE_URL}`);
-    }
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
 
-    // Player — center screen
-    const size = 96;
-    const cx = screenWidth / 2;
-    const cy = screenHeight / 2;
+    // Layout: 4 large sprites in a row near the bottom of the screen
+    const SIZE   = 128;
+    const PAD    = 20;
+    const totalW = SIZE * 4 + PAD * 3;
+    const startX = (W - totalW) / 2;
+    const Y      = H - SIZE - 60; // near bottom
 
-    this.testResults.playerDrawn = this._drawSprite(ctx, TEST_PLAYER_URL, 'PLAYER',
-      cx - size / 2, cy - size / 2, size, '#0044cc');
+    // 1 — Player (Archer_Idle.png)
+    this.results.player.rendered = this._drawSlot(
+      ctx, 'PLAYER\nArcher_Idle.png', this.results.player.url,
+      startX, Y, SIZE, '#1a3a6e'
+    );
 
-    // NPC — left side
-    this.testResults.npcDrawn = this._drawSprite(ctx, TEST_NPC_URL, 'NPC',
-      16, cy - size / 2, size, '#006622');
+    // 2 — NPC (Avatars_01.png)
+    this.results.npc.rendered = this._drawSlot(
+      ctx, 'NPC\nAvatars_01.png', this.results.npc.url,
+      startX + (SIZE + PAD), Y, SIZE, '#1a5c1a'
+    );
 
-    // Enemy — right side
-    this.testResults.enemyDrawn = this._drawSprite(ctx, TEST_ENEMY_URL, 'ENEMY',
-      screenWidth - size - 16, cy - size / 2, size, '#880000');
+    // 3 — Enemy (Bear_Idle.png)
+    this.results.enemy.rendered = this._drawSlot(
+      ctx, 'ENEMY\nBear_Idle.png', this.results.enemy.url,
+      startX + (SIZE + PAD) * 2, Y, SIZE, '#6e1a1a'
+    );
 
-    // Projectile — small, top center
-    this.testResults.projectileDrawn = this._drawSprite(ctx, TEST_PROJECTILE_URL, 'ARROW',
-      cx - 20, 20, 40, '#444400');
+    // 4 — Projectile (Arrow.png) — drawn at natural aspect inside slot
+    this.results.projectile.rendered = this._drawSlot(
+      ctx, 'ARROW\nArrow.png', this.results.projectile.url,
+      startX + (SIZE + PAD) * 3, Y, SIZE, '#4a4a00'
+    );
 
-    this._drawLabels(ctx, screenWidth, screenHeight);
+    // Summary panel top-left
+    this._drawSummary(ctx);
 
     ctx.restore();
   }
 
-  _drawSprite(ctx, url, label, x, y, size, bgColor) {
-    // Always draw background box — visible even if image fails
+  /**
+   * Draw one test slot:
+   *  - colored background box
+   *  - sprite image (synchronous from cache) if available
+   *  - yellow border = success, red border = not ready
+   *  - label below
+   */
+  _drawSlot(ctx, label, url, x, y, size, bgColor) {
+    // Background
     ctx.fillStyle = bgColor;
     ctx.fillRect(x, y, size, size);
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x, y, size, size);
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 9px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(label, x + size / 2, y + size - 5);
+    const img = this._getImage(url);
+    let rendered = false;
 
-    // Try cache (both raw and encoded key)
-    const encodedUrl = encodeURI(url);
-    const img = this.assetIntegration.imageCache.get(encodedUrl)
-             || this.assetIntegration.imageCache.get(url);
-
-    if (!img) {
-      // Request load if not already requested
-      if (!this._requested[url]) {
-        this._requested[url] = true;
-        console.log(`[DEBUG RENDER] Requesting: ${encodedUrl}`);
-        this.assetIntegration.loadImage(url).then(loaded => {
-          if (loaded) {
-            console.log(`[DEBUG RENDER] ✓ Loaded ${label}: ${loaded.naturalWidth}x${loaded.naturalHeight} — ${encodedUrl}`);
-          } else {
-            console.error(`[DEBUG RENDER] ✗ FAILED to load ${label}: ${encodedUrl}`);
-          }
-        });
-      }
-      ctx.fillStyle = '#ff4444';
-      ctx.font = 'bold 9px monospace';
-      ctx.fillText('LOADING...', x + size / 2, y + size / 2);
-      return false;
-    }
-
-    if (!img.complete || img.naturalWidth === 0) {
-      ctx.fillStyle = '#ff8800';
-      ctx.fillText('NOT READY', x + size / 2, y + size / 2);
-      return false;
-    }
-
-    if (!this._logged[label]) {
-      console.log(`[DEBUG RENDER] ✓ DRAWING ${label}: ${img.naturalWidth}x${img.naturalHeight} at (${x},${y}) ${size}x${size}`);
-      this._logged[label] = true;
-    }
-
-    try {
+    if (img && img.complete && img.naturalWidth > 0) {
+      // Draw image stretched to fill slot
       ctx.drawImage(img, x, y, size, size);
-      // Yellow border = success
+      rendered = true;
+      // Yellow border = confirmed render
       ctx.strokeStyle = '#ffff00';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(x, y, size, size);
+    } else {
+      // Red border = not in cache yet
+      ctx.strokeStyle = '#ff3333';
       ctx.lineWidth = 3;
       ctx.strokeRect(x, y, size, size);
-      return true;
-    } catch (err) {
-      console.error(`[DEBUG RENDER] ✗ drawImage threw for ${label}: ${err.message}`);
-      return false;
+      // Status text
+      ctx.fillStyle = '#ff6666';
+      ctx.font = 'bold 11px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(img ? 'NOT READY' : 'LOADING...', x + size / 2, y + size / 2);
     }
+
+    // Label below the box
+    const lines = label.split('\n');
+    ctx.fillStyle = rendered ? '#ffff88' : '#ff8888';
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(lines[0], x + size / 2, y + size + 14);
+    ctx.fillStyle = '#aaaaaa';
+    ctx.font = '9px monospace';
+    ctx.fillText(lines[1] || '', x + size / 2, y + size + 26);
+
+    // rendered/false badge
+    const badge = rendered ? '✓ rendered: true' : '✗ rendered: false';
+    ctx.fillStyle = rendered ? '#44ff88' : '#ff4444';
+    ctx.font = 'bold 9px monospace';
+    ctx.fillText(badge, x + size / 2, y + size + 40);
+
+    return rendered;
   }
 
-  _drawLabels(ctx, screenWidth, screenHeight) {
-    const pad = 8;
-    const lh = 18;
-    let y = pad + 14;
-
-    const lines = [
-      '=== SPRITE DEBUG ===',
-      `Player (Archer_Idle): ${this.testResults.playerDrawn ? '✓ DRAWN' : '✗ missing'}`,
-      `NPC (Avatars_01):     ${this.testResults.npcDrawn ? '✓ DRAWN' : '✗ missing'}`,
-      `Enemy (Bear_Idle):    ${this.testResults.enemyDrawn ? '✓ DRAWN' : '✗ missing'}`,
-      `Arrow projectile:     ${this.testResults.projectileDrawn ? '✓ DRAWN' : '✗ missing'}`,
+  /**
+   * Summary panel top-left — shows URL + render status for all 4 assets
+   */
+  _drawSummary(ctx) {
+    const PAD = 8;
+    const LH  = 16;
+    const entries = [
+      { label: 'Player  (Archer_Idle)',  key: 'player'     },
+      { label: 'NPC     (Avatars_01)',   key: 'npc'        },
+      { label: 'Enemy   (Bear_Idle)',    key: 'enemy'      },
+      { label: 'Projectile (Arrow)',     key: 'projectile' },
     ];
 
-    lines.forEach(line => {
-      ctx.fillStyle = 'rgba(0,0,0,0.75)';
-      ctx.fillRect(pad - 2, y - 13, 310, lh);
-      ctx.fillStyle = line.includes('✓') ? '#44ff88' : line.startsWith('=') ? '#ffdd44' : '#ffffff';
-      ctx.font = 'bold 11px monospace';
-      ctx.textAlign = 'left';
-      ctx.fillText(line, pad, y);
-      y += lh;
-    });
+    const panelW = 480;
+    const panelH = PAD * 2 + LH * (entries.length + 2) + 4;
+    const px = PAD;
+    const py = PAD;
 
-    // Bottom instruction
-    ctx.fillStyle = 'rgba(0,0,0,0.75)';
-    ctx.fillRect(pad - 2, screenHeight - 44, 420, 38);
-    ctx.fillStyle = '#ffff00';
-    ctx.font = 'bold 10px monospace';
-    ctx.fillText('Yellow border = image rendered from real /Assets PNG ✓', pad, screenHeight - 26);
-    ctx.fillStyle = '#ff6644';
-    ctx.fillText('No yellow border = image still loading or URL broken ✗', pad, screenHeight - 10);
+    ctx.fillStyle = 'rgba(0,0,0,0.82)';
+    ctx.fillRect(px, py, panelW, panelH);
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(px, py, panelW, panelH);
+
+    ctx.font = 'bold 11px monospace';
+    ctx.fillStyle = '#ffdd44';
+    ctx.textAlign = 'left';
+    ctx.fillText('=== SPRITE RENDER PROOF ===', px + PAD, py + PAD + LH);
+
+    let ty = py + PAD + LH * 2;
+    for (const e of entries) {
+      const r = this.results[e.key];
+      const status = r.rendered ? '✓ YES' : '✗ NO ';
+      ctx.fillStyle = r.rendered ? '#44ff88' : '#ff5555';
+      ctx.font = 'bold 10px monospace';
+      ctx.fillText(`${status}  ${e.label}`, px + PAD, ty);
+      ty += LH;
+    }
+
+    ty += 4;
+    ctx.fillStyle = '#888';
+    ctx.font = '9px monospace';
+    ctx.fillText('Yellow border = image drawn from preloaded cache', px + PAD, ty);
   }
 }

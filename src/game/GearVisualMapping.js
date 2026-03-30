@@ -5,7 +5,10 @@
  * Provides class-aware variants and intelligent fallbacks.
  */
 
-import { EQUIPMENT_SPRITES, getTerrainSprite } from './CompleteAssetRegistry.js';
+import { getTerrainSprite } from './CompleteAssetRegistry.js';
+
+// No verified equipment sprites yet — all lookups return null gracefully
+const EQUIPMENT_SPRITES = {};
 
 /**
  * Anchor-point based gear positioning system
