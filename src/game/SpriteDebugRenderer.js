@@ -29,16 +29,19 @@ export class SpriteDebugRenderer {
     // Throttled frame log — confirm this function executes every frame
     this._frameCount = (this._frameCount || 0) + 1;
     if (this._frameCount === 1 || this._frameCount % 120 === 0) {
-      console.log(`[TEST DRAW EXECUTED] frame=${this._frameCount} canvas=${screenWidth}x${screenHeight}`);
+      console.log(`[TEST DRAW EXECUTED] frame=${this._frameCount} canvas=${screenWidth}x${screenHeight} cacheSize=${this.assetIntegration.imageCache.size}`);
     }
 
     // Save canvas state
     ctx.save();
 
-    // Ensure no transforms are active
-    ctx.resetTransform();
+    // Ensure no transforms are active — critical after zoom ctx.restore()
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
+
+    // TEST 0: KNOWN-GOOD PUBLIC IMAGE (Wikipedia — confirms any image can render)
+    this._drawFallbackTest(ctx, screenWidth, screenHeight);
 
     // TEST 1: PLAYER SPRITE (CENTER SCREEN)
     this._drawTestPlayerCentered(ctx, screenWidth, screenHeight);
@@ -53,6 +56,36 @@ export class SpriteDebugRenderer {
     this._drawDiagnosticLabels(ctx, screenWidth, screenHeight);
 
     ctx.restore();
+  }
+
+  _drawFallbackTest(ctx, screenWidth, screenHeight) {
+    const size = 80;
+    const x = screenWidth / 2 - size / 2;
+    const y = 20;
+    const url = 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/240px-PNG_transparency_demonstration_1.png';
+
+    // Draw background so position is always visible
+    ctx.fillStyle = '#333333';
+    ctx.fillRect(x, y, size, size);
+    ctx.strokeStyle = '#00ffff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, size, size);
+
+    const img = this.assetIntegration.imageCache.get(url);
+    if (img && img.complete && img.naturalWidth > 0) {
+      ctx.drawImage(img, x, y, size, size);
+      if (!this._loggedFallback) {
+        console.log(`[FALLBACK TEST] ✓ Wikipedia image rendered: ${img.naturalWidth}x${img.naturalHeight}`);
+        this._loggedFallback = true;
+      }
+    } else if (!this._fallbackRequested) {
+      console.log(`[FALLBACK TEST] Requesting public test image: ${url}`);
+      this._fallbackRequested = true;
+      this.assetIntegration.loadImage(url).then(img => {
+        if (img) console.log(`[FALLBACK TEST] ✓ Loaded: ${img.naturalWidth}x${img.naturalHeight}`);
+        else console.error(`[FALLBACK TEST] ✗ Failed to load`);
+      });
+    }
   }
 
   _tryGetImage(rawUrl) {

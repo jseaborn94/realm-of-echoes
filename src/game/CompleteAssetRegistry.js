@@ -283,16 +283,16 @@ export function getRandomEnemyType() {
 export function getPlayerSprite(classId, color = 'blue', animState = 'idle') {
   const normalizedClass = (classId || 'warrior').toLowerCase();
   const normalizedColor = (color || 'blue').toLowerCase();
-  const mappedState = animState || 'idle';
   
-  // Try exact match first
-  if (PLAYER_SPRITES[normalizedClass]?.[normalizedColor]?.[mappedState]) {
-    return PLAYER_SPRITES[normalizedClass][normalizedColor][mappedState];
-  }
-  
-  // Fallback to idle animation if state not found
-  if (PLAYER_SPRITES[normalizedClass]?.[normalizedColor]?.['idle']) {
-    return PLAYER_SPRITES[normalizedClass][normalizedColor]['idle'];
+  // PLAYER_SPRITES[class][color] = string URL directly (not nested by animState)
+  const url = PLAYER_SPRITES[normalizedClass]?.[normalizedColor];
+  if (typeof url === 'string') return url;
+
+  // Fallback: any color for this class
+  const classEntry = PLAYER_SPRITES[normalizedClass];
+  if (classEntry) {
+    const firstUrl = Object.values(classEntry).find(v => typeof v === 'string');
+    if (firstUrl) return firstUrl;
   }
   
   return null;
