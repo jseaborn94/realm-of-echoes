@@ -6,7 +6,7 @@
  */
 
 import { 
-  getPlayerSprite, getEnemySprite, getTerrainSprite, 
+  getPlayerSprite, getEnemySprite, getTerrainSprite, getProjectileSprite,
   TERRAIN_SPRITES, PLAYER_SPRITES, ENEMY_SPRITES, EFFECT_SPRITES, UI_SPRITES
 } from './CompleteAssetRegistry.js';
 
@@ -23,32 +23,39 @@ export class AssetIntegration {
    */
   async loadImage(url) {
     if (!url) return null;
-    
-    if (this.imageCache.has(url)) {
-      return this.imageCache.get(url);
+
+    // Encode URL to handle spaces in asset paths (e.g. "Blue Units", "Enemy Pack")
+    const encodedUrl = encodeURI(url);
+
+    if (this.imageCache.has(encodedUrl)) {
+      return this.imageCache.get(encodedUrl);
     }
 
-    if (this.loadingPromises.has(url)) {
-      return this.loadingPromises.get(url);
+    if (this.loadingPromises.has(encodedUrl)) {
+      return this.loadingPromises.get(encodedUrl);
     }
 
     const promise = new Promise((resolve, reject) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
+        console.log(`[IMG LOAD] ✓ onload: ${img.width}x${img.height} — ${encodedUrl}`);
+        this.imageCache.set(encodedUrl, img);
+        // Also cache by original url key so lookups by raw URL still work
         this.imageCache.set(url, img);
         resolve(img);
       };
       img.onerror = () => {
-        console.warn(`Failed to load sprite: ${url}`);
-        reject(new Error(`Failed to load: ${url}`));
+        console.error(`[IMG LOAD] ✗ onerror — ${encodedUrl}`);
+        reject(new Error(`Failed to load: ${encodedUrl}`));
       };
-      img.src = url;
+      console.log(`[IMG LOAD] → requesting: ${encodedUrl}`);
+      img.src = encodedUrl;
     });
 
-    this.loadingPromises.set(url, promise);
+    this.loadingPromises.set(encodedUrl, promise);
     return promise.catch(err => {
-      this.loadingPromises.delete(url);
+      this.loadingPromises.delete(encodedUrl);
       return null;
     });
   }
@@ -204,8 +211,6 @@ export class AssetIntegration {
    * @param {string} projectileType - Type (arrow, magic, flame, ice, spark, dark, default)
    */
   async drawProjectile(ctx, screenX, screenY, angle = 0, projectileType = 'magic') {
-    // Import getProjectileSprite from registry
-    const { getProjectileSprite } = await import('./CompleteAssetRegistry.js');
     const spriteUrl = getProjectileSprite(projectileType);
     if (!spriteUrl) return;
 
@@ -302,8 +307,6 @@ export class AssetIntegration {
    * Maps: classId → registry category, animState → idle/move/attack
    */
   drawPlayerSpriteSync(ctx, classId, screenX, screenY, color = 'blue', animState = 'idle') {
-    const { getPlayerSprite } = require('./CompleteAssetRegistry.js');
-    
     // Normalize class ID
     const normalizedClass = (classId || 'warrior').toLowerCase();
     const validClasses = ['warrior', 'archer', 'lancer', 'monk'];
@@ -355,8 +358,6 @@ export class AssetIntegration {
    * Maps: enemyType → registry, animState → idle/run/attack/death
    */
   drawEnemySpriteSync(ctx, enemyType, screenX, screenY, animState = 'idle', flipX = 1) {
-    const { getEnemySprite } = require('./CompleteAssetRegistry.js');
-    
     // Normalize type
     const normalizedType = (enemyType || 'goblin').toLowerCase();
     

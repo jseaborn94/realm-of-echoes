@@ -26,6 +26,12 @@ export class SpriteDebugRenderer {
   drawTestSpritesCentered(ctx, screenWidth, screenHeight) {
     if (!ctx) return;
 
+    // Throttled frame log — confirm this function executes every frame
+    this._frameCount = (this._frameCount || 0) + 1;
+    if (this._frameCount === 1 || this._frameCount % 120 === 0) {
+      console.log(`[TEST DRAW EXECUTED] frame=${this._frameCount} canvas=${screenWidth}x${screenHeight}`);
+    }
+
     // Save canvas state
     ctx.save();
 
@@ -33,8 +39,6 @@ export class SpriteDebugRenderer {
     ctx.resetTransform();
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
-
-    console.log(`[DEBUG RENDER] Canvas: ${screenWidth}x${screenHeight}`);
 
     // TEST 1: PLAYER SPRITE (CENTER SCREEN)
     this._drawTestPlayerCentered(ctx, screenWidth, screenHeight);
@@ -51,134 +55,93 @@ export class SpriteDebugRenderer {
     ctx.restore();
   }
 
-  _drawTestPlayerCentered(ctx, screenWidth, screenHeight) {
-    const x = screenWidth / 2 - 32;  // Center horizontally
-    const y = screenHeight / 2 - 32; // Center vertically
-    const size = 64;
+  _tryGetImage(rawUrl) {
+    // Try both encoded and raw URL since loadImage caches under both
+    const encoded = encodeURI(rawUrl);
+    return this.assetIntegration.imageCache.get(encoded)
+        || this.assetIntegration.imageCache.get(rawUrl)
+        || null;
+  }
 
-    console.log(`[PLAYER TEST] Drawing at screen (${x}, ${y}) size=${size}x${size}`);
+  _drawTestSprite(ctx, rawUrl, label, x, y, size, bgColor) {
+    const encodedUrl = encodeURI(rawUrl);
 
-    // Get image from cache
-    const playerUrl = 'https://raw.githubusercontent.com/jseaborn94/Realm-of-Echoes-Assets/main/assets/Units/Blue Units/Warrior/Warrior_Idle.png';
-    const img = this.assetIntegration.imageCache.get(playerUrl);
-
-    if (!img) {
-      console.error(`[PLAYER TEST] ✗ NOT IN CACHE`);
-      this._drawErrorBox(ctx, x, y, size, '#ff0000', 'NO IMG');
-      this.testResults.playerLoaded = false;
-      return;
-    }
-
-    // Verify image is loaded
-    if (!img.complete || img.width === 0 || img.height === 0) {
-      console.error(`[PLAYER TEST] ✗ IMAGE NOT READY: complete=${img.complete} ${img.width}x${img.height}`);
-      this._drawErrorBox(ctx, x, y, size, '#ff6600', 'BAD IMG');
-      this.testResults.playerLoaded = false;
-      return;
-    }
-
-    console.log(`[PLAYER TEST] ✓ Image loaded: ${img.width}x${img.height}`);
-    this.testResults.playerLoaded = true;
-
-    // Draw the image
-    try {
-      ctx.drawImage(img, x, y, size, size);
-      console.log(`[PLAYER TEST] ✓ drawImage executed`);
-      this.testResults.playerDrawn = true;
-    } catch (err) {
-      console.error(`[PLAYER TEST] ✗ drawImage failed: ${err.message}`);
-      this._drawErrorBox(ctx, x, y, size, '#ff0000', 'DRAW FAIL');
-      return;
-    }
-
-    // Draw border to verify position
-    ctx.strokeStyle = '#ffff00';
+    // ALWAYS draw background rect first — if this is visible but image is not → image issue
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(x, y, size, size);
+    ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 2;
     ctx.strokeRect(x, y, size, size);
+
+    // Label on the box
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, x + size / 2, y + size - 6);
+
+    // Get image
+    const img = this._tryGetImage(rawUrl);
+    if (!img) {
+      console.error(`[${label}] ✗ NOT IN CACHE — url: ${encodedUrl}`);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 9px monospace';
+      ctx.fillText('MISSING', x + size / 2, y + size / 2);
+      return false;
+    }
+
+    if (!img.complete || img.naturalWidth === 0) {
+      console.error(`[${label}] ✗ IMG NOT READY: complete=${img.complete} naturalW=${img.naturalWidth}`);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 9px monospace';
+      ctx.fillText('NOT READY', x + size / 2, y + size / 2);
+      return false;
+    }
+
+    // Only log on first success to avoid spam
+    const cacheKey = `logged_${label}`;
+    if (!this[cacheKey]) {
+      console.log(`[${label}] ✓ In cache: ${img.naturalWidth}x${img.naturalHeight} — drawing at (${x},${y}) ${size}x${size}`);
+      this[cacheKey] = true;
+    }
+
+    try {
+      ctx.drawImage(img, x, y, size, size);
+      // Yellow border on success to distinguish from error state
+      ctx.strokeStyle = '#ffff00';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, size, size);
+      return true;
+    } catch (err) {
+      console.error(`[${label}] ✗ drawImage threw: ${err.message}`);
+      return false;
+    }
+  }
+
+  _drawTestPlayerCentered(ctx, screenWidth, screenHeight) {
+    const size = 96;
+    const x = screenWidth / 2 - size / 2;
+    const y = screenHeight / 2 - size / 2;
+    const url = 'https://raw.githubusercontent.com/jseaborn94/Realm-of-Echoes-Assets/main/assets/Units/Blue Units/Warrior/Warrior_Idle.png';
+    this.testResults.playerDrawn = this._drawTestSprite(ctx, url, 'PLAYER', x, y, size, '#0044cc');
+    this.testResults.playerLoaded = this.testResults.playerDrawn;
   }
 
   _drawTestNPCCentered(ctx, screenWidth, screenHeight) {
-    const x = 32;  // Left side
-    const y = screenHeight / 2 - 32;
-    const size = 64;
-
-    console.log(`[NPC TEST] Drawing at screen (${x}, ${y}) size=${size}x${size}`);
-
-    const npcUrl = 'https://raw.githubusercontent.com/jseaborn94/Realm-of-Echoes-Assets/main/assets/Units/Black Units/Warrior/Warrior_Idle.png';
-    const img = this.assetIntegration.imageCache.get(npcUrl);
-
-    if (!img) {
-      console.error(`[NPC TEST] ✗ NOT IN CACHE`);
-      this._drawErrorBox(ctx, x, y, size, '#ff0000', 'NO IMG');
-      this.testResults.npcLoaded = false;
-      return;
-    }
-
-    if (!img.complete || img.width === 0 || img.height === 0) {
-      console.error(`[NPC TEST] ✗ IMAGE NOT READY: complete=${img.complete} ${img.width}x${img.height}`);
-      this._drawErrorBox(ctx, x, y, size, '#ff6600', 'BAD IMG');
-      this.testResults.npcLoaded = false;
-      return;
-    }
-
-    console.log(`[NPC TEST] ✓ Image loaded: ${img.width}x${img.height}`);
-    this.testResults.npcLoaded = true;
-
-    try {
-      ctx.drawImage(img, x, y, size, size);
-      console.log(`[NPC TEST] ✓ drawImage executed`);
-      this.testResults.npcDrawn = true;
-    } catch (err) {
-      console.error(`[NPC TEST] ✗ drawImage failed: ${err.message}`);
-      this._drawErrorBox(ctx, x, y, size, '#ff0000', 'DRAW FAIL');
-      return;
-    }
-
-    ctx.strokeStyle = '#ffff00';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x, y, size, size);
+    const size = 96;
+    const x = 16;
+    const y = screenHeight / 2 - size / 2;
+    const url = 'https://raw.githubusercontent.com/jseaborn94/Realm-of-Echoes-Assets/main/assets/Units/Black Units/Warrior/Warrior_Idle.png';
+    this.testResults.npcDrawn = this._drawTestSprite(ctx, url, 'NPC', x, y, size, '#006622');
+    this.testResults.npcLoaded = this.testResults.npcDrawn;
   }
 
   _drawTestEnemyCentered(ctx, screenWidth, screenHeight) {
-    const x = screenWidth - 96;  // Right side
-    const y = screenHeight / 2 - 32;
-    const size = 64;
-
-    console.log(`[ENEMY TEST] Drawing at screen (${x}, ${y}) size=${size}x${size}`);
-
-    const enemyUrl = 'https://raw.githubusercontent.com/jseaborn94/Realm-of-Echoes-Assets/main/assets/Enemy Pack/Bear/Bear_Idle.png';
-    const img = this.assetIntegration.imageCache.get(enemyUrl);
-
-    if (!img) {
-      console.error(`[ENEMY TEST] ✗ NOT IN CACHE`);
-      this._drawErrorBox(ctx, x, y, size, '#ff0000', 'NO IMG');
-      this.testResults.enemyLoaded = false;
-      return;
-    }
-
-    if (!img.complete || img.width === 0 || img.height === 0) {
-      console.error(`[ENEMY TEST] ✗ IMAGE NOT READY: complete=${img.complete} ${img.width}x${img.height}`);
-      this._drawErrorBox(ctx, x, y, size, '#ff6600', 'BAD IMG');
-      this.testResults.enemyLoaded = false;
-      return;
-    }
-
-    console.log(`[ENEMY TEST] ✓ Image loaded: ${img.width}x${img.height}`);
-    this.testResults.enemyLoaded = true;
-
-    try {
-      ctx.drawImage(img, x, y, size, size);
-      console.log(`[ENEMY TEST] ✓ drawImage executed`);
-      this.testResults.enemyDrawn = true;
-    } catch (err) {
-      console.error(`[ENEMY TEST] ✗ drawImage failed: ${err.message}`);
-      this._drawErrorBox(ctx, x, y, size, '#ff0000', 'DRAW FAIL');
-      return;
-    }
-
-    ctx.strokeStyle = '#ffff00';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x, y, size, size);
+    const size = 96;
+    const x = screenWidth - size - 16;
+    const y = screenHeight / 2 - size / 2;
+    const url = 'https://raw.githubusercontent.com/jseaborn94/Realm-of-Echoes-Assets/main/assets/Enemy Pack/Bear/Bear_Idle.png';
+    this.testResults.enemyDrawn = this._drawTestSprite(ctx, url, 'ENEMY', x, y, size, '#880000');
+    this.testResults.enemyLoaded = this.testResults.enemyDrawn;
   }
 
   _drawErrorBox(ctx, x, y, size, color, label) {
