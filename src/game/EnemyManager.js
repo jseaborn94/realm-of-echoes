@@ -735,21 +735,25 @@ export class EnemyManager {
     }
     if (e.hitFlash > 0) ctx.globalAlpha = (ctx.globalAlpha || 1) * 0.85;
 
-    // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    // Shadow — drawn at foot level (sy)
+    const shadowR = isBoss ? 22 : isMiniboss ? 18 : isElite ? 14 : 10;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.beginPath();
-    ctx.ellipse(sx, sy + r + 4, r * 1.0, r * 0.4, 0, 0, Math.PI * 2);
+    ctx.ellipse(sx, sy, shadowR, shadowR * 0.35, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Aura for special tiers
+    // Aura for special tiers — centered at sprite mid-body
     if (isElite || isMiniboss || isBoss) {
+      const spriteH2 = isBoss ? 76 : isMiniboss ? 60 : 48;
+      const midY = sy - spriteH2 / 2;
+      const auraR = isBoss ? 50 : isMiniboss ? 40 : 30;
       const glowColor = isBoss ? '#ff9800' : isMiniboss ? '#e040fb' : e.color;
-      const grd = ctx.createRadialGradient(sx, sy, 0, sx, sy, r * 2.4);
-      grd.addColorStop(0, glowColor + '66');
+      const grd = ctx.createRadialGradient(sx, midY, 0, sx, midY, auraR);
+      grd.addColorStop(0, glowColor + '55');
       grd.addColorStop(1, 'transparent');
       ctx.fillStyle = grd;
       ctx.beginPath();
-      ctx.arc(sx, sy, r * 2.4, 0, Math.PI * 2);
+      ctx.arc(sx, midY, auraR, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -761,17 +765,18 @@ export class EnemyManager {
     else if (e.state === 'charge' || e.state === 'attack') animState = 'attack';
     else if (e.state === 'chase') animState = 'run';
 
-    // Scale sprite target height by tier
-    const spriteH = isBoss ? 80 : isMiniboss ? 64 : isElite ? 56 : 48;
-    const spriteDrawn = assetIntegration.drawEnemySpriteSync(ctx, enemyType, sx, sy + r, animState, e.facingLeft ? -1 : 1, spriteH);
+    // Sprite heights in world-space:
+    // normal=32, elite=48, miniboss=60, boss=76
+    // Foot anchor is sy (center of world tile), sprite draws upward from there.
+    const spriteH = isBoss ? 76 : isMiniboss ? 60 : isElite ? 48 : 32;
+    const spriteDrawn = assetIntegration.drawEnemySpriteSync(ctx, enemyType, sx, sy, animState, e.facingLeft ? -1 : 1, spriteH);
 
     // Fallback: circle placeholder if sprite not cached
     if (!spriteDrawn) {
       ctx.fillStyle = e.hitFlash > 0 ? '#ffffff' : e.color;
       ctx.beginPath();
-      ctx.arc(sx, sy, r, 0, Math.PI * 2);
+      ctx.arc(sx, sy - r / 2, r, 0, Math.PI * 2);
       ctx.fill();
-      // Border only on fallback circle
       const borderColor = isBoss ? '#ff9800' : isMiniboss ? '#e040fb' : isElite ? '#ffd700' : 'rgba(0,0,0,0.4)';
       ctx.strokeStyle = borderColor;
       ctx.lineWidth = isBoss ? 4 : isMiniboss ? 3 : isElite ? 2 : 1;
@@ -782,26 +787,29 @@ export class EnemyManager {
       ctx.save();
       ctx.globalAlpha = (ctx.globalAlpha || 1) * labelAlpha;
 
+      // Labels anchored above sprite top
+      const spriteTop = sy - (isBoss ? 76 : isMiniboss ? 60 : isElite ? 48 : 32);
+
       if (isBoss) {
         ctx.font = 'bold 8px Cinzel, serif'; ctx.fillStyle = '#ff9800'; ctx.textBaseline = 'alphabetic';
-        ctx.fillText('⚠ BOSS', sx, sy - r - 24);
+        ctx.fillText('⚠ BOSS', sx, spriteTop - 22);
       } else if (isMiniboss) {
         ctx.font = 'bold 8px Cinzel, serif'; ctx.fillStyle = '#e040fb'; ctx.textBaseline = 'alphabetic';
-        ctx.fillText('◆ MINI-BOSS', sx, sy - r - 22);
+        ctx.fillText('◆ MINI-BOSS', sx, spriteTop - 20);
       } else if (isElite) {
         ctx.font = 'bold 8px Cinzel, serif'; ctx.fillStyle = '#ffd700'; ctx.textBaseline = 'alphabetic';
-        ctx.fillText('★ ELITE', sx, sy - r - 20);
+        ctx.fillText('★ ELITE', sx, spriteTop - 18);
       }
 
       ctx.font = `bold ${isBoss ? 11 : isMiniboss ? 10 : 9}px Cinzel, serif`;
       ctx.fillStyle = isBoss ? '#ff9800' : isMiniboss ? '#e040fb' : isElite ? '#ffd700' : '#ddd';
       ctx.textBaseline = 'alphabetic';
-      ctx.fillText(e.name, sx, sy - r - 10);
+      ctx.fillText(e.name, sx, spriteTop - 8);
 
       const barW = isBoss ? 90 : isMiniboss ? 70 : isElite ? 54 : 36;
       const barH = isBoss ? 8 : isMiniboss ? 7 : 5;
       const barX = sx - barW / 2;
-      const barY = sy - r - 8;
+      const barY = spriteTop - 6;
       const hpPct = Math.max(0, e.hp / e.maxHp);
       ctx.fillStyle = 'rgba(0,0,0,0.65)';
       ctx.fillRect(barX, barY, barW, barH);

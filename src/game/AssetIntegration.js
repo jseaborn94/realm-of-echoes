@@ -261,8 +261,9 @@ export class AssetIntegration {
     }
 
     try {
-      // Target height: 52px in world-space (visible at zoom 1.6 → ~83px on screen)
-      const TARGET_H = 52;
+      // Target height: 72px in world-space (visible at zoom 1.6 → ~115px on screen)
+      // Large enough to be clearly identifiable as the player character
+      const TARGET_H = 72;
       const aspect = img.naturalWidth / img.naturalHeight;
       const h = TARGET_H;
       const w = h * aspect;
@@ -338,8 +339,8 @@ export class AssetIntegration {
       ctx.save();
       ctx.translate(screenX, screenY);
       ctx.rotate(angle);
-      // Arrow: fixed 20px wide, aspect-correct height
-      const TARGET_W = 20;
+      // Arrow: fixed 28px wide, aspect-correct height — visible during combat
+      const TARGET_W = 28;
       const aspect = img.naturalHeight / img.naturalWidth;
       const w = TARGET_W;
       const h = w * aspect;
@@ -352,8 +353,9 @@ export class AssetIntegration {
   }
 
   /**
-   * Draw NPC avatar synchronously — crops first frame if sheet detected.
-   * Avatars_01.png is treated as a sprite sheet (multiple columns).
+   * Draw NPC sprite synchronously.
+   * Uses NPC_SPRITES.default (Warrior_Idle.png — clean upright humanoid).
+   * Drawn at 68px tall, same as player but slightly shorter to differentiate.
    */
   drawNPCSpriteSync(ctx, screenX, screenY) {
     const url = NPC_SPRITES.default;
@@ -361,19 +363,12 @@ export class AssetIntegration {
     if (!img || !img.complete || img.naturalWidth === 0) return false;
 
     try {
-      // Avatars_01.png: if width >> height, treat as horizontal sheet, crop first frame
-      const frameW = img.naturalHeight; // assume square frames
-      const frameH = img.naturalHeight;
-      const TARGET_H = 52;
-      const scale = TARGET_H / frameH;
-      const dw = frameW * scale;
-      const dh = frameH * scale;
-
-      ctx.drawImage(img,
-        0, 0, frameW, frameH,           // source: first frame
-        screenX - dw / 2, screenY - dh, // dest: centered, feet at screenY
-        dw, dh
-      );
+      // 68px tall — clearly readable, slightly shorter than player (72px)
+      const TARGET_H = 68;
+      const aspect = img.naturalWidth / img.naturalHeight;
+      const h = TARGET_H;
+      const w = h * aspect;
+      ctx.drawImage(img, screenX - w / 2, screenY - h, w, h);
       return true;
     } catch (err) {
       return false;

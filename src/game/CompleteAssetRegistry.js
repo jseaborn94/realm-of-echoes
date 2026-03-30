@@ -53,39 +53,58 @@ export const PLAYER_SPRITES = {
 
 // ─────────────────────────────────────────────────────────────
 // ENEMY SPRITES
-// All files verified to exist in /Assets flat folder
+// Verified base files: Bear_Idle/Run/Attack, Gnoll_Idle, Spider_Idle,
+//                      Snake_Idle, Skull_Idle, Lancer_Idle/Run/Attack
+//
+// Fallback policy: types without a dedicated file map to the closest
+// verified humanoid or creature sprite. Marked with [TEMP].
 // ─────────────────────────────────────────────────────────────
+
+// Base sprite sets (directly verified)
+const BEAR_SPRITES   = { idle: `${BASE}/Bear_Idle.png`,   run: `${BASE}/Bear_Run.png`,   attack: `${BASE}/Bear_Attack.png` };
+const GNOLL_SPRITES  = { idle: `${BASE}/Gnoll_Idle.png`,  run: `${BASE}/Gnoll_Idle.png`, attack: `${BASE}/Gnoll_Idle.png`  };
+const SPIDER_SPRITES = { idle: `${BASE}/Spider_Idle.png`, run: `${BASE}/Spider_Idle.png`,attack: `${BASE}/Spider_Idle.png` };
+const SNAKE_SPRITES  = { idle: `${BASE}/Snake_Idle.png`,  run: `${BASE}/Snake_Idle.png`, attack: `${BASE}/Snake_Idle.png`  };
+const SKULL_SPRITES  = { idle: `${BASE}/Skull_Idle.png`,  run: `${BASE}/Skull_Idle.png`, attack: `${BASE}/Skull_Idle.png`  };
+const LANCER_SPRITES = { idle: `${BASE}/Lancer_Idle.png`, run: `${BASE}/Lancer_Run.png`, attack: `${BASE}/Lancer_Attack.png` };
+
 export const ENEMY_SPRITES = {
-  bear: {
-    idle:   `${BASE}/Bear_Idle.png`,
-    run:    `${BASE}/Bear_Run.png`,
-    attack: `${BASE}/Bear_Attack.png`,
-  },
-  gnoll: {
-    idle:   `${BASE}/Gnoll_Idle.png`,
-    run:    `${BASE}/Gnoll_Idle.png`,   // only idle verified
-    attack: `${BASE}/Gnoll_Idle.png`,
-  },
-  spider: {
-    idle:   `${BASE}/Spider_Idle.png`,
-    run:    `${BASE}/Spider_Idle.png`,
-    attack: `${BASE}/Spider_Idle.png`,
-  },
-  snake: {
-    idle:   `${BASE}/Snake_Idle.png`,
-    run:    `${BASE}/Snake_Idle.png`,
-    attack: `${BASE}/Snake_Idle.png`,
-  },
-  skull: {
-    idle:   `${BASE}/Skull_Idle.png`,
-    run:    `${BASE}/Skull_Idle.png`,
-    attack: `${BASE}/Skull_Idle.png`,
-  },
-  lancer: {
-    idle:   `${BASE}/Lancer_Idle.png`,
-    run:    `${BASE}/Lancer_Run.png`,
-    attack: `${BASE}/Lancer_Attack.png`,
-  },
+  // ── DEDICATED sprites ──────────────────────────────────────
+  bear:         BEAR_SPRITES,
+  gnoll:        GNOLL_SPRITES,
+  spider:       SPIDER_SPRITES,
+  snake:        SNAKE_SPRITES,
+  skull:        SKULL_SPRITES,
+  lancer:       LANCER_SPRITES,
+
+  // ── HUMANOID melee fallbacks (lancer is best humanoid combat sprite) ──
+  thief:        LANCER_SPRITES,   // [TEMP] fast humanoid → lancer
+  gnome:        GNOLL_SPRITES,    // [TEMP] small humanoid → gnoll
+  warlord:      LANCER_SPRITES,   // [TEMP] heavy humanoid → lancer
+
+  // ── CREATURE / BEAST fallbacks ──────────────────────────────
+  panda:        BEAR_SPRITES,     // [TEMP] large bear-like → bear
+  frost_bear:   BEAR_SPRITES,     // [TEMP] elite bear → bear
+  shadow_panda: BEAR_SPRITES,     // [TEMP] elite panda → bear
+  minotaur:     BEAR_SPRITES,     // [TEMP] large brute → bear
+  troll:        BEAR_SPRITES,     // [TEMP] miniboss brute → bear
+  golem:        BEAR_SPRITES,     // [TEMP] miniboss tank → bear
+  ogre:         BEAR_SPRITES,     // [TEMP] boss → bear
+  turtle:       BEAR_SPRITES,     // [TEMP] armored tank → bear
+  lizard:       LANCER_SPRITES,   // [TEMP] elite reptile humanoid → lancer
+
+  // ── UNDEAD / MAGIC fallbacks ─────────────────────────────────
+  alpha_skull:  SKULL_SPRITES,    // elite skull → skull
+  wraith:       SKULL_SPRITES,    // [TEMP] ghost → skull
+  frost_witch:  LANCER_SPRITES,   // [TEMP] caster humanoid → lancer
+
+  // ── RANGED fallbacks ─────────────────────────────────────────
+  harpoonfish:  SNAKE_SPRITES,    // [TEMP] aquatic ranged → snake
+  shaman:       GNOLL_SPRITES,    // [TEMP] ranged caster → gnoll
+  viper:        SNAKE_SPRITES,    // elite snake → snake
+
+  // ── TRAINING DUMMY ───────────────────────────────────────────
+  dummy:        SKULL_SPRITES,    // training dummy → skull
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -99,10 +118,12 @@ export const PROJECTILE_SPRITES = {
 
 // ─────────────────────────────────────────────────────────────
 // NPC / AVATAR SPRITES
+// Warrior_Idle.png is a clean upright humanoid — best available
+// for NPCs until dedicated NPC sprites are uploaded.
 // ─────────────────────────────────────────────────────────────
 export const NPC_SPRITES = {
-  default: `${BASE}/Avatars_01.png`,
-  avatar1: `${BASE}/Avatars_01.png`,
+  default:  `${BASE}/Warrior_Idle.png`,  // clean upright humanoid [TEMP until NPC sprite uploaded]
+  avatar1:  `${BASE}/Avatars_01.png`,    // kept for reference
 };
 
 // ─────────────────────────────────────────────────────────────

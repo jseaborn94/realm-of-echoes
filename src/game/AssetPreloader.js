@@ -12,7 +12,6 @@ import {
   PROJECTILE_SPRITES,
   NPC_SPRITES,
   TEST_PLAYER_URL,
-  TEST_NPC_URL,
   TEST_ENEMY_URL,
   TEST_PROJECTILE_URL,
 } from './CompleteAssetRegistry.js';
@@ -54,9 +53,8 @@ export class AssetPreloader {
   _getRequiredUrls() {
     const urls = new Set();
 
-    // Debug test sprites (always preload these first)
+    // Core sprites (always preload first)
     urls.add(TEST_PLAYER_URL);
-    urls.add(TEST_NPC_URL);
     urls.add(TEST_ENEMY_URL);
     urls.add(TEST_PROJECTILE_URL);
 
