@@ -1,11 +1,21 @@
 /**
  * AssetPreloader.js
- * 
+ *
  * Preloads all required game sprites before gameplay starts.
  * Ensures the render loop is 100% synchronous with no async dependencies.
+ * Uses VERIFIED flat-file URLs from CompleteAssetRegistry.
  */
 
-import { PLAYER_SPRITES, ENEMY_SPRITES } from './CompleteAssetRegistry.js';
+import {
+  PLAYER_SPRITES,
+  ENEMY_SPRITES,
+  PROJECTILE_SPRITES,
+  NPC_SPRITES,
+  TEST_PLAYER_URL,
+  TEST_NPC_URL,
+  TEST_ENEMY_URL,
+  TEST_PROJECTILE_URL,
+} from './CompleteAssetRegistry.js';
 
 export class AssetPreloader {
   constructor(assetIntegration) {
@@ -15,16 +25,16 @@ export class AssetPreloader {
   }
 
   /**
-   * Preload all required sprites
-   * Returns a promise that resolves when all assets are ready
+   * Preload all required sprites.
+   * Returns a promise that resolves when all assets are ready.
    */
   async preloadAll() {
-    console.log('[PRELOAD] Starting asset preload...');
-    
+    console.log('[PRELOAD] Starting asset preload from verified /Assets URLs...');
+
     const startTime = performance.now();
     const urls = this._getRequiredUrls();
+    console.log(`[PRELOAD] ${urls.length} unique URLs to load`);
 
-    // Load all URLs in parallel
     const promises = urls.map(url => this._preloadUrl(url));
     await Promise.all(promises);
 
@@ -39,79 +49,69 @@ export class AssetPreloader {
   }
 
   /**
-   * Get all unique sprite URLs needed for gameplay
+   * Collect all unique URLs from the verified registry.
    */
   _getRequiredUrls() {
     const urls = new Set();
 
-    // HARDCODED TEST SPRITES (must be preloaded for debug renderer)
-    urls.add('https://raw.githubusercontent.com/jseaborn94/Realm-of-Echoes-Assets/main/assets/Units/Blue Units/Warrior/Warrior_Idle.png');
-    urls.add('https://raw.githubusercontent.com/jseaborn94/Realm-of-Echoes-Assets/main/assets/Units/Black Units/Warrior/Warrior_Idle.png');
-    urls.add('https://raw.githubusercontent.com/jseaborn94/Realm-of-Echoes-Assets/main/assets/Enemy Pack/Bear/Bear_Idle.png');
+    // Debug test sprites (always preload these first)
+    urls.add(TEST_PLAYER_URL);
+    urls.add(TEST_NPC_URL);
+    urls.add(TEST_ENEMY_URL);
+    urls.add(TEST_PROJECTILE_URL);
 
-    // Player sprites - all class/color combinations
-    for (const [classKey, classSprites] of Object.entries(PLAYER_SPRITES)) {
-      if (typeof classSprites === 'object') {
-        for (const spriteUrl of Object.values(classSprites)) {
-          if (typeof spriteUrl === 'string') urls.add(spriteUrl);
-        }
+    // All player sprite states
+    for (const classEntry of Object.values(PLAYER_SPRITES)) {
+      for (const url of Object.values(classEntry)) {
+        if (typeof url === 'string') urls.add(url);
       }
     }
 
-    // Enemy sprites - common enemy types
-    const commonEnemies = [
-      'bear', 'gnoll', 'spider', 'snake', 'lancer', 'thief', 'skull',
-      'turtle', 'lizard', 'shaman', 'panda',
-      'harpoonfish', 'gnome', 'troll', 'paddlefish', 'minotaur'
-    ];
-
-    for (const enemyType of commonEnemies) {
-      if (ENEMY_SPRITES[enemyType]) {
-        const spriteData = ENEMY_SPRITES[enemyType];
-        if (typeof spriteData === 'object') {
-          // Extract URLs from nested structure
-          for (const url of Object.values(spriteData)) {
-            if (typeof url === 'string') urls.add(url);
-          }
-        }
+    // All enemy sprite states
+    for (const enemyEntry of Object.values(ENEMY_SPRITES)) {
+      for (const url of Object.values(enemyEntry)) {
+        if (typeof url === 'string') urls.add(url);
       }
+    }
+
+    // Projectiles
+    for (const url of Object.values(PROJECTILE_SPRITES)) {
+      if (typeof url === 'string') urls.add(url);
+    }
+
+    // NPC avatars
+    for (const url of Object.values(NPC_SPRITES)) {
+      if (typeof url === 'string') urls.add(url);
     }
 
     return Array.from(urls);
   }
 
-  /**
-   * Preload a single URL
-   */
   async _preloadUrl(url) {
     if (!url) return;
-    
     try {
       const img = await this.assetIntegration.loadImage(url);
       if (img) {
         this.preloadedCount++;
       } else {
         this.failedCount++;
+        console.warn(`[PRELOAD] Failed (null): ${url}`);
       }
     } catch (err) {
       this.failedCount++;
-      // Log failures but don't crash
-      console.warn(`[PRELOAD] Failed: ${url}`);
+      console.warn(`[PRELOAD] Failed (error): ${url} — ${err.message}`);
     }
   }
 
-  /**
-   * Check if an image is in the cache (synchronous check)
-   */
   isLoaded(url) {
-    return this.assetIntegration.imageCache.has(url);
+    return this.assetIntegration.imageCache.has(url)
+        || this.assetIntegration.imageCache.has(encodeURI(url));
   }
 
-  /**
-   * Get cached image synchronously (returns null if not loaded)
-   */
   getImage(url) {
     if (!url) return null;
-    return this.assetIntegration.imageCache.get(url) || null;
+    return this.assetIntegration.imageCache.get(encodeURI(url))
+        || this.assetIntegration.imageCache.get(url)
+        || null;
   }
 }

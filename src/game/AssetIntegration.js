@@ -7,7 +7,7 @@
 
 import { 
   getPlayerSprite, getEnemySprite, getTerrainSprite, getProjectileSprite,
-  TERRAIN_SPRITES, PLAYER_SPRITES, ENEMY_SPRITES, EFFECT_SPRITES, UI_SPRITES
+  PLAYER_SPRITES, ENEMY_SPRITES, PROJECTILE_SPRITES, NPC_SPRITES
 } from './CompleteAssetRegistry.js';
 
 export class AssetIntegration {
@@ -184,22 +184,7 @@ export class AssetIntegration {
    * @param {number} alpha - Opacity (0-1)
    */
   async drawEffect(ctx, effectType, screenX, screenY, scale = 1, alpha = 1) {
-    const spriteUrl = EFFECT_SPRITES[effectType];
-    if (!spriteUrl) return;
-
-    try {
-      const img = await this.loadImage(spriteUrl);
-      if (!img) return;
-
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      const w = img.width * scale;
-      const h = img.height * scale;
-      ctx.drawImage(img, screenX - w / 2, screenY - h / 2, w, h);
-      ctx.restore();
-    } catch (err) {
-      // Silent fail
-    }
+    // No verified effect sprites yet — silent no-op
   }
 
   /**
@@ -244,60 +229,6 @@ export class AssetIntegration {
    * @param {number} width - Button width
    * @param {number} height - Button height
    */
-  async drawButton(ctx, buttonType, screenX, screenY, width = 100, height = 40) {
-    const spriteUrl = UI_SPRITES.buttons[buttonType];
-    if (!spriteUrl) return;
-
-    try {
-      const img = await this.loadImage(spriteUrl);
-      if (!img) return;
-
-      ctx.drawImage(img, screenX, screenY, width, height);
-    } catch (err) {
-      // Silent fail
-    }
-  }
-
-  /**
-   * Draw a stat bar (health, mana, xp)
-   * @param {CanvasRenderingContext2D} ctx
-   * @param {string} barSize - Size (big, small)
-   * @param {number} screenX - Left X
-   * @param {number} screenY - Top Y
-   * @param {number} fillPercent - Fill amount (0-1)
-   * @param {string} fillColor - Optional tint color
-   */
-  async drawBar(ctx, barSize, screenX, screenY, fillPercent, fillColor = null) {
-    const baseUrl = UI_SPRITES.bars[`${barSize}Base`];
-    const fillUrl = UI_SPRITES.bars[`${barSize}Fill`];
-    if (!baseUrl || !fillUrl) return;
-
-    try {
-      const baseImg = await this.loadImage(baseUrl);
-      const fillImg = await this.loadImage(fillUrl);
-      if (!baseImg || !fillImg) return;
-
-      const w = baseImg.width;
-      const h = baseImg.height;
-
-      // Draw base
-      ctx.drawImage(baseImg, screenX, screenY, w, h);
-
-      // Draw fill with clipping
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(screenX, screenY, w * fillPercent, h);
-      ctx.clip();
-      if (fillColor) {
-        ctx.globalTint = fillColor;
-      }
-      ctx.drawImage(fillImg, screenX, screenY, w, h);
-      ctx.restore();
-    } catch (err) {
-      // Silent fail
-    }
-  }
-
   /**
    * SYNCHRONOUS DRAW METHODS (for use in render loop after preload)
    */
@@ -309,19 +240,12 @@ export class AssetIntegration {
   drawPlayerSpriteSync(ctx, classId, screenX, screenY, color = 'blue', animState = 'idle') {
     // Normalize class ID
     const normalizedClass = (classId || 'warrior').toLowerCase();
-    const validClasses = ['warrior', 'archer', 'lancer', 'monk'];
-    if (!validClasses.includes(normalizedClass)) {
-      if (!this._loggedMissing.has(`invalid_class_${classId}`)) {
-        console.warn(`[Render] Invalid player class: ${classId}, defaulting to warrior`);
-        this._loggedMissing.add(`invalid_class_${classId}`);
-      }
-      return false;
-    }
 
     // Map animation state: use idle if unrecognized
     const validStates = ['idle', 'move', 'attack'];
     const mappedState = validStates.includes(animState) ? animState : 'idle';
     
+    // New flat registry: getPlayerSprite(classId, color, animState)
     const spriteUrl = getPlayerSprite(normalizedClass, color, mappedState);
     
     if (!spriteUrl) {
@@ -358,10 +282,10 @@ export class AssetIntegration {
    * Maps: enemyType → registry, animState → idle/run/attack/death
    */
   drawEnemySpriteSync(ctx, enemyType, screenX, screenY, animState = 'idle', flipX = 1) {
-    // Normalize type
-    const normalizedType = (enemyType || 'goblin').toLowerCase();
+    // Normalize type — new registry keys: bear, gnoll, spider, snake, skull, lancer
+    const normalizedType = (enemyType || 'bear').toLowerCase();
     
-    // Map animation state: use idle if unrecognized
+    // Map animation state
     const validStates = ['idle', 'run', 'attack', 'death'];
     const mappedState = validStates.includes(animState) ? animState : 'idle';
     
