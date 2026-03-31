@@ -5,8 +5,10 @@ import { assetIntegration } from './AssetIntegration.js';
 import { getEnemyProjectileType } from './CompleteAssetRegistry.js';
 
 // ─── Zone enemy tables ────────────────────────────────────────────────────────
+// Zone 1 (Starter Plains): curated starter set — bear, spider, snake, thief only.
+// Fallback discipline: bear→Bear sprite, spider→Spider, snake→Snake, thief→Lancer (one humanoid max).
 const ZONE_NORMAL = {
-  1: ['skull', 'thief', 'lancer', 'gnome'],
+  1: ['bear', 'spider', 'snake', 'thief'],
   2: ['lancer', 'thief', 'snake', 'spider', 'gnoll', 'harpoonfish'],
   3: ['snake', 'spider', 'bear', 'gnoll', 'harpoonfish', 'shaman'],
   4: ['bear', 'panda', 'gnoll', 'shaman'],
@@ -14,7 +16,7 @@ const ZONE_NORMAL = {
 };
 
 const ZONE_ELITES = {
-  1: ['alpha_skull'],
+  1: ['alpha_skull'],            // Zone 1: only one elite type — distinct skull art, not humanoid
   2: ['alpha_skull', 'viper', 'turtle'],
   3: ['turtle', 'viper', 'lizard'],
   4: ['frost_bear', 'lizard', 'minotaur'],
@@ -177,9 +179,12 @@ export class EnemyManager {
   }
 
   _initialSpawn() {
-    const ZONE_CAMPS  = { 1: 50, 2: 60, 3: 55, 4: 60, 5: 50 };
-    const CAMP_SIZE   = { 1: [3,4], 2: [3,4], 3: [3,5], 4: [4,5], 5: [4,5] };
-    const ELITE_CAMPS = { 1: 6, 2: 8, 3: 8, 4: 10, 5: 10 };
+    // Zone 1: reduced density for readable starter experience
+    // 18 camps × 2-3 enemies ≈ 45-54 enemies spread across the whole starter zone (was ~175)
+    const ZONE_CAMPS  = { 1: 18, 2: 60, 3: 55, 4: 60, 5: 50 };
+    const CAMP_SIZE   = { 1: [2,3], 2: [3,4], 3: [3,5], 4: [4,5], 5: [4,5] };
+    // Zone 1: only 2 elite camps (was 6) — alpha_skull acts as a rare, distinct threat
+    const ELITE_CAMPS = { 1: 2, 2: 8, 3: 8, 4: 10, 5: 10 };
 
     for (let zoneId = 1; zoneId <= 5; zoneId++) {
       const bounds = this._getZoneSearchBounds(zoneId);
@@ -187,8 +192,10 @@ export class EnemyManager {
       const [minCamp, maxCamp] = CAMP_SIZE[zoneId];
       const types  = ZONE_NORMAL[zoneId];
 
+      // Zone 1 uses larger minimum spacing between camps to prevent clustering
+      const campMinSpacing = zoneId === 1 ? 80 : 40;
       for (let p = 0; p < camps; p++) {
-        const center = this._findValidSpot(bounds, zoneId, 40);
+        const center = this._findValidSpot(bounds, zoneId, campMinSpacing);
         if (!center) continue;
         const campType = types[Math.floor(Math.random() * types.length)];
         const count = minCamp + Math.floor(Math.random() * (maxCamp - minCamp + 1));
@@ -324,7 +331,10 @@ export class EnemyManager {
     if (col < 1 || col >= WORLD_COLS - 1 || row < 1 || row >= WORLD_ROWS - 1) return true;
     if (this.world.getTile(col, row) === TILE.WATER) return true;
     if (this.world.isBlocked(col, row)) return true;
-    if (Math.abs(col - 185) < 16 && Math.abs(row - 390) < 16) return true;
+    // Safe radius around player spawn (col 185, row 390) — 30 tile radius (was 16)
+    if (Math.abs(col - 185) < 30 && Math.abs(row - 390) < 30) return true;
+    // Safe radius around starter NPC cluster (cols 178-198, rows 378-412) — 20 tile padding
+    if (col >= 160 && col <= 215 && row >= 360 && row <= 430) return true;
     return false;
   }
 

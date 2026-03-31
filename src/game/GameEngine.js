@@ -1076,10 +1076,23 @@ export class GameEngine {
     const py = H / 2;
     const tier = getLevelTierColor(gs.level);
 
-    // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    // Readability glow ring — subtle colored halo matching class color so player stands out vs enemies
+    const classColor = gs.classData?.color || '#ffffff';
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+    const glowGrad = ctx.createRadialGradient(px, py, 0, px, py, 38);
+    glowGrad.addColorStop(0, classColor);
+    glowGrad.addColorStop(1, 'transparent');
+    ctx.fillStyle = glowGrad;
     ctx.beginPath();
-    ctx.ellipse(px, py + 16, 14, 6, 0, 0, Math.PI * 2);
+    ctx.arc(px, py, 38, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath();
+    ctx.ellipse(px, py + 16, 16, 6, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // Get animation state and facing direction
